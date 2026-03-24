@@ -1,0 +1,53 @@
+# Custom Questions
+
+You can provide specific questions for the AI to ask, or let it generate them automatically, or both.
+
+## Manual questions only
+
+```javascript
+const interview = await client.interviews.create({
+  type: 'ai',
+  jobRole: 'Frontend Engineer',
+  candidate: { name: 'Jane', email: 'jane@example.com' },
+  aiGenerate: false,
+  questions: [
+    'What is your experience with React hooks?',
+    'How do you handle state management in large apps?',
+    'Describe your approach to testing React components',
+    'Tell me about a performance optimization you implemented',
+  ],
+});
+```
+
+## AI-generated questions only
+
+```javascript
+const interview = await client.interviews.create({
+  type: 'ai',
+  jobRole: 'Frontend Engineer',
+  candidate: { name: 'Jane', email: 'jane@example.com' },
+  aiGenerate: true,
+  skills: ['React', 'TypeScript', 'Performance'],
+  seniority: 'SENIOR',
+});
+```
+
+The AI generates questions based on the job role, skills, and seniority level.
+
+## Both — your questions + AI questions
+
+```javascript
+const interview = await client.interviews.create({
+  type: 'ai',
+  jobRole: 'Frontend Engineer',
+  candidate: { name: 'Jane', email: 'jane@example.com' },
+  aiGenerate: true,
+  questions: [
+    'Tell me about our product X — what would you improve?',
+    'How would you approach migrating our jQuery codebase to React?',
+  ],
+  skills: ['React', 'TypeScript'],
+});
+```
+
+The AI will ask your custom questions first, then fill remaining time with generated questions.

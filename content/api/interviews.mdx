@@ -1,0 +1,204 @@
+# Interviews API
+
+## Create Interview
+
+```
+POST /api/integration/interviews
+```
+
+```bash
+curl -X POST https://api.meetings.boooply.com/api/integration/interviews \
+  -H "Authorization: Bearer bply_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "meetingType": "AI_ONLY",
+    "jobRole": "Frontend Engineer",
+    "participants": [
+      { "name": "Jane Doe", "email": "jane@example.com", "role": "CANDIDATE" }
+    ],
+    "skills": ["React", "TypeScript"],
+    "durationMinutes": 20
+  }'
+```
+
+### Body Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `meetingType` | `AI_ONLY \| HUMAN` | Yes | Interview type |
+| `isTeamMeeting` | `boolean` | No | Set to `true` for team meetings |
+| `jobRole` | `string` | Yes (interviews) | Job title |
+| `participants` | `array` | Yes | List of participants |
+| `candidateCV` | `string` | No | Resume/CV text |
+| `skills` | `string[]` | No | Skills to evaluate |
+| `seniority` | `string` | No | Seniority level |
+| `durationMinutes` | `number` | No | Duration (min: 5, default: 30) |
+| `scheduledAt` | `string` | No | ISO 8601 datetime (required for `FIXED` mode) |
+| `schedulingMode` | `string` | No | `IMMEDIATE` \| `FIXED` \| `CANDIDATE_PICKS` (not available for team meetings) |
+| `availableSlots` | `array` | No | Time slots for `CANDIDATE_PICKS` mode — `[{ start, end }]` (max 50). Each slot's duration should match `durationMinutes` |
+| `questions` | `array` | No | Custom questions |
+| `aiGenerate` | `boolean` | No | Auto-generate questions |
+| `companyName` | `string` | No | Company name (defaults to org name) |
+| `evaluationFocus` | `string` | No | `knowledge` \| `balanced` \| `communication` \| `problem_solving` \| `culture` |
+| `sendCandidateFeedback` | `boolean` | No | Send feedback email to candidate |
+| `externalJobId` | `string` | No | External ATS job ID |
+| `agenda` | `string[]` | No | Agenda items (team meetings only) |
+| `transcriptionEnabled` | `boolean` | No | Enable video recording & transcription (team meetings, default: false) |
+
+### Emails
+
+When an interview is created, Boooply automatically sends invitation emails to all participants from `noreply@boooply.com`:
+
+- **Candidates** receive a join link, or a booking link if `schedulingMode` is `CANDIDATE_PICKS`
+- **Interviewers/hosts** receive a separate join link with their token
+- If `sendCandidateFeedback` is `true`, the candidate receives an AI-generated feedback email after evaluation completes
+
+> **Important:** Make sure your candidates are aware they will receive emails from Boooply (`noreply@boooply.com`). Consider adding this to your hiring communications so invitation emails don't end up in spam.
+
+---
+
+## Get Interviewer Availability
+
+Fetch available time slots from a team member's Google Calendar connected in Boooply.
+
+```
+GET /api/integration/availability?email=bob@company.com&duration=30&days=14
+```
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `email` | `string` | Yes | Team member's email |
+| `duration` | `number` | No | Slot duration in minutes (default: 30) |
+| `days` | `number` | No | Days ahead to look (default: 14, max: 30) |
+
+### Response
+
+```json
+{
+  "success": true,
+  "calendarConnected": true,
+  "email": "bob@company.com",
+  "durationMinutes": 30,
+  "days": 14,
+  "slots": [
+    { "start": "2026-04-01T09:00:00Z", "end": "2026-04-01T09:30:00Z" },
+    { "start": "2026-04-01T09:30:00Z", "end": "2026-04-01T10:00:00Z" }
+  ],
+  "total": 42
+}
+```
+
+If the user hasn't connected their Google Calendar:
+
+```json
+{
+  "success": true,
+  "calendarConnected": false,
+  "slots": [],
+  "message": "This user has not connected their Google Calendar in Boooply. You can provide availableSlots directly when creating the interview."
+}
+```
+
+> **Two options for scheduling:** You can pull availability from Boooply using this endpoint, or provide your own `availableSlots` from your ATS calendar integration when creating the interview. Both approaches work — use whichever fits your integration.
+
+---
+
+## Get Busy Blocks
+
+Fetch raw busy time blocks from a team member's Google Calendar. Use this if you want to compute availability with your own rules instead of using the pre-computed slots from the availability endpoint.
+
+```
+GET /api/integration/busy-blocks?email=bob@company.com&days=14
+```
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `email` | `string` | Yes | Team member's email |
+| `days` | `number` | No | Days ahead to look (default: 14, max: 30) |
+
+### Response
+
+```json
+{
+  "success": true,
+  "calendarConnected": true,
+  "email": "bob@company.com",
+  "days": 14,
+  "timezone": "Europe/Berlin",
+  "busyBlocks": [
+    { "start": "2026-04-01T09:00:00Z", "end": "2026-04-01T10:00:00Z" },
+    { "start": "2026-04-01T13:00:00Z", "end": "2026-04-01T14:30:00Z" }
+  ],
+  "total": 18
+}
+```
+
+> **`busy-blocks` vs `availability`:** The availability endpoint returns ready-to-use slots (Mon–Fri, 9–5, filtered by duration). Use `busy-blocks` when you need the raw calendar data to apply your own working hours, slot durations, or merge with other calendar systems.
+
+---
+
+## List Interviews
+
+```
+GET /api/integration/interviews?status=COMPLETED&limit=20
+```
+
+### Query Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `status` | `string` | `SCHEDULED \| ACTIVE \| COMPLETED \| CANCELLED` |
+| `type` | `string` | `AI_ONLY \| HUMAN` |
+| `search` | `string` | Search by role, name, email |
+| `page` | `number` | Page number (default: 1) |
+| `limit` | `number` | Results per page (default: 20, max: 100) |
+
+---
+
+## Get Interview
+
+```
+GET /api/integration/interviews/:meetingCode
+```
+
+---
+
+## Cancel Interview
+
+```
+PATCH /api/integration/interviews/:meetingCode/cancel
+```
+
+```json
+{ "reason": "Position filled" }
+```
+
+---
+
+## Reschedule Interview
+
+```
+PATCH /api/integration/interviews/:meetingCode/reschedule
+```
+
+```json
+{
+  "scheduledAt": "2026-04-05T14:00:00Z",
+  "durationMinutes": 30,
+  "reason": "Candidate requested"
+}
+```
+
+---
+
+## Delete Interview
+
+```
+DELETE /api/integration/interviews/:meetingCode
+```
+
+> **Warning:** This permanently deletes the interview and all associated data.

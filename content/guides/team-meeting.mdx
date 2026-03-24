@@ -1,0 +1,88 @@
+# Team Meetings
+
+Internal team meetings with video recording, transcription, and AI-generated recaps.
+
+## Create a Team Meeting
+
+```javascript
+const meeting = await client.interviews.create({
+  type: 'team',
+  scheduledAt: '2026-04-01T10:00:00Z',
+  durationMinutes: 60,
+  participants: [
+    { name: 'Alice', email: 'alice@company.com', role: 'HOST' },
+    { name: 'Bob', email: 'bob@company.com', role: 'PARTICIPANT' },
+    { name: 'Carol', email: 'carol@company.com', role: 'PARTICIPANT' },
+  ],
+  agenda: ['Q1 review', 'Roadmap planning', 'Hiring updates'],
+  transcriptionEnabled: true,
+});
+```
+
+### Parameters
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `participants` | `array` | Required | Must include at least one `HOST` |
+| `scheduledAt` | `string` | — | ISO 8601 datetime |
+| `durationMinutes` | `number` | `30` | Meeting duration |
+| `agenda` | `string[]` | `[]` | Agenda items visible to all participants |
+| `transcriptionEnabled` | `boolean` | `false` | Enable video recording & post-meeting transcription |
+
+## Recording & Transcription
+
+When `transcriptionEnabled: true`:
+
+1. **Video recording** starts automatically when participants join (Room Composite — all participants in one video)
+2. **Audio tracks** are recorded individually per participant (for accurate speaker attribution)
+3. The host can toggle recording on/off during the meeting via the **REC** button
+
+When the meeting ends:
+
+1. Individual audio tracks are transcribed using AI speech-to-text
+2. Speaker names are automatically matched to participants (no generic "Speaker 0" labels)
+3. Transcripts are merged by timestamp into a unified timeline
+
+## AI Recap
+
+After transcription completes, the AI generates:
+
+- **Summary** — 3-5 sentence overview of the meeting
+- **Key Topics** — what was discussed and by whom
+- **Action Items** — what needs to be done, who's responsible, deadlines
+- **Decisions** — what was agreed upon
+- **Open Questions** — unresolved issues
+- **Meeting Stats** — dominant speakers, meeting tone, participation balance
+
+All participants with email addresses receive the recap automatically.
+
+## In-Meeting Features
+
+During the meeting, participants have access to:
+
+- **Shared Notes** — collaborative bullet-point notes visible to everyone
+- **Agenda** — checkable agenda items (host/co-host can add, edit, check off)
+- **Live Polls** — create polls, vote, see results
+- **Hand Raise** — signal to speak
+
+Shared notes, agenda state, and poll results are saved and visible on the meeting detail page after the meeting ends.
+
+## Accessing Results
+
+```javascript
+// Get meeting details (includes recap, transcript count, video URL)
+const details = await client.interviews.get('Team-1234567890');
+
+// Get transcript
+const { transcript } = await client.interviews.getTranscript('Team-1234567890');
+// transcript: [{ speaker: 'Alice', content: 'Let's start...', startMs: 1000, endMs: 3500 }, ...]
+```
+
+The meeting detail page shows:
+- **Recap** tab — AI-generated summary, action items, decisions
+- **Transcript** tab — full transcript with speaker names and timestamps
+- **Agenda** tab — agenda items with completion status
+- **Shared Notes** tab — collaborative notes from the meeting
+- **Polls** tab — poll questions, options, and vote results
+- **Notes** tab — private notes taken by participants
+- **Video player** — recording with speaker timeline and talk time stats

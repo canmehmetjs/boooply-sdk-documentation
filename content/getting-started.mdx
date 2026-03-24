@@ -1,0 +1,71 @@
+# Getting Started
+
+## Installation
+
+```bash
+npm install @boooply/ai-interviews-sdk
+```
+
+## Authentication
+
+All API requests require an API key. You can get your API key from the [Boooply dashboard](https://app.boooply.com/settings) or by contacting support.
+
+```bash
+# Store in your .env file
+BOOOPLY_API_KEY=bply_org_xxxxxxxxxxxxx
+BOOOPLY_BASE_URL=https://api.meetings.boooply.com
+```
+
+> **Security:** Never expose your API key in client-side code. Always call the Boooply API from your backend.
+
+## Initialize the client
+
+```javascript
+const { BoooplyClient } = require('@boooply/ai-interviews-sdk');
+
+const client = new BoooplyClient({
+  apiKey: process.env.BOOOPLY_API_KEY,
+  baseUrl: process.env.BOOOPLY_BASE_URL,
+  timeout: 30000, // optional, default 30s
+});
+```
+
+## Create your first interview
+
+```javascript
+const interview = await client.interviews.create({
+  type: 'ai',
+  jobRole: 'Frontend Engineer',
+  candidate: {
+    name: 'Jane Doe',
+    email: 'jane@example.com',
+  },
+  skills: ['React', 'TypeScript', 'CSS'],
+  durationMinutes: 20,
+});
+
+console.log('Interview created:', interview.meetingCode);
+console.log('Send this URL to the candidate:', interview.url);
+```
+
+The candidate opens the URL in their browser, and the AI interviewer takes over — asking questions, evaluating responses, and generating a detailed assessment.
+
+## Get results
+
+After the interview completes, retrieve the evaluation:
+
+```javascript
+const evaluation = await client.interviews.getEvaluation(interview.meetingCode);
+
+console.log('Score:', evaluation.overallScore);       // 0-100
+console.log('Recommendation:', evaluation.recommendation); // PASS | FAIL | REVIEW
+console.log('Communication:', evaluation.communication);
+console.log('Technical:', evaluation.technical);
+```
+
+## Next steps
+
+- [SDK Reference](/docs/sdk/interviews) — Full API for creating and managing interviews
+- [API Reference](/docs/api/authentication) — REST API endpoints
+- [Guides](/docs/guides/ai-interview) — Step-by-step tutorials
+- [Webhooks](/docs/webhooks) — Real-time event notifications

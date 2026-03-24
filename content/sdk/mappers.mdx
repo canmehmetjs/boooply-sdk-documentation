@@ -1,0 +1,60 @@
+# Participant Mappers
+
+Helper functions to convert users from external platforms into Boooply's participant format.
+
+## `mapGoogleParticipant(googleUser)`
+
+Map a Google OAuth user to a Boooply participant.
+
+```javascript
+const { mapGoogleParticipant } = require('@boooply/ai-interviews-sdk');
+
+const participant = mapGoogleParticipant({
+  name: 'Jane Smith',
+  email: 'jane@gmail.com',
+  id: 'google-user-id-123',
+  picture: 'https://...',
+  role: 'INTERVIEWER', // optional, defaults to INTERVIEWER
+});
+```
+
+## `mapMicrosoftParticipant(msUser)`
+
+Map a Microsoft user to a Boooply participant.
+
+```javascript
+const { mapMicrosoftParticipant } = require('@boooply/ai-interviews-sdk');
+
+const participant = mapMicrosoftParticipant({
+  displayName: 'Bob Johnson',
+  mail: 'bob@company.com',
+  id: 'ms-user-id-456',
+  role: 'HOST',
+});
+```
+
+## `mapGenericParticipant(user)`
+
+Map any external user to a Boooply participant.
+
+```javascript
+const { mapGenericParticipant } = require('@boooply/ai-interviews-sdk');
+
+const participant = mapGenericParticipant({
+  name: 'John Doe',
+  email: 'john@example.com',
+  externalUserId: '12345',
+  authProvider: 'YOUR_PLATFORM',
+  role: 'CANDIDATE',
+});
+```
+
+## Participant roles
+
+| Role | Description |
+|------|-------------|
+| `CANDIDATE` | The person being interviewed |
+| `INTERVIEWER` | A human interviewer |
+| `HOST` | Meeting organizer |
+| `CO_HOST` | Co-organizer |
+| `PARTICIPANT` | General participant (team meetings) |

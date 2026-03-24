@@ -1,0 +1,279 @@
+# Interviews
+
+The `client.interviews` namespace provides methods for creating, managing, and retrieving interview data.
+
+## `interviews.create(data)`
+
+Create an AI interview, human interview, or team meeting.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `type` | `'ai' \| 'human' \| 'team'` | Yes | Interview type |
+| `jobRole` | `string` | Yes (ai/human) | Job role or title |
+| `companyName` | `string` | No | Company name (defaults to your organization name) |
+| `candidate` | `{ name, email }` | Yes (ai) | Candidate info |
+| `participants` | `Array<{ name, email, role }>` | Yes (human/team) | Participant list |
+| `candidateCV` | `string` | No | CV/resume text for better AI questions |
+| `skills` | `string[]` | No | Skills to evaluate |
+| `seniority` | `string` | No | `JUNIOR` \| `MID` \| `SENIOR` \| `LEAD` \| `PRINCIPAL` |
+| `department` | `string` | No | Department name |
+| `jobDescription` | `string` | No | Full job description |
+| `workSetup` | `string` | No | `REMOTE` \| `ONSITE` \| `HYBRID` |
+| `employmentType` | `string` | No | `FULL_TIME` \| `PART_TIME` \| `CONTRACT` |
+| `durationMinutes` | `number` | No | Duration (default: 30, min: 5) |
+| `scheduledAt` | `string` | No | ISO 8601 datetime |
+| `schedulingMode` | `string` | No | `IMMEDIATE` \| `FIXED` \| `CANDIDATE_PICKS` |
+| `questions` | `string[]` | No | Custom interview questions |
+| `aiGenerate` | `boolean` | No | Auto-generate questions with AI |
+| `evaluationFocus` | `string` | No | `knowledge` \| `balanced` \| `communication` \| `problem_solving` \| `culture` |
+| `sendCandidateFeedback` | `boolean` | No | Send AI-generated feedback email to candidate after evaluation |
+| `externalJobId` | `string` | No | External job/position ID from your ATS |
+
+### Examples
+
+```javascript
+// AI Interview — full options
+const interview = await client.interviews.create({
+  type: 'ai',
+  jobRole: 'Senior Frontend Engineer',
+  companyName: 'Acme Corp',
+  candidate: { name: 'Jane Doe', email: 'jane@example.com' },
+  candidateCV: 'Full resume text here...',
+  skills: ['React', 'TypeScript', 'GraphQL'],
+  seniority: 'SENIOR',
+  department: 'Engineering',
+  jobDescription: 'We are looking for a senior frontend engineer...',
+  workSetup: 'REMOTE',
+  employmentType: 'FULL_TIME',
+  durationMinutes: 25,
+  evaluationFocus: 'knowledge',
+  sendCandidateFeedback: true,
+  aiGenerate: true,
+  externalJobId: 'job_abc123',
+});
+```
+
+```javascript
+// Human Interview
+const interview = await client.interviews.create({
+  type: 'human',
+  jobRole: 'Backend Engineer',
+  scheduledAt: '2026-04-01T14:00:00Z',
+  participants: [
+    { name: 'Jane Doe', email: 'jane@example.com', role: 'CANDIDATE' },
+    { name: 'Bob Smith', email: 'bob@company.com', role: 'INTERVIEWER' },
+  ],
+  skills: ['Node.js', 'PostgreSQL'],
+});
+```
+
+```javascript
+// Team Meeting (with recording & transcription)
+const meeting = await client.interviews.create({
+  type: 'team',
+  scheduledAt: '2026-04-01T10:00:00Z',
+  durationMinutes: 60,
+  participants: [
+    { name: 'Alice', email: 'alice@company.com', role: 'HOST' },
+    { name: 'Bob', email: 'bob@company.com', role: 'PARTICIPANT' },
+    { name: 'Carol', email: 'carol@company.com', role: 'PARTICIPANT' },
+  ],
+  agenda: ['Q1 review', 'Roadmap planning'],
+  transcriptionEnabled: true, // video recording + post-meeting transcript & AI recap
+});
+```
+
+### Response
+
+```json
+{
+  "meeting": {
+    "meetingCode": "Boooply-AI-1234567890",
+    "url": "https://meetings.boooply.com/join/Boooply-AI-1234567890",
+    "meetingType": "AI_ONLY",
+    "sessionStatus": "SCHEDULED",
+    "participants": [
+      {
+        "name": "Jane Doe",
+        "email": "jane@example.com",
+        "role": "CANDIDATE",
+        "joinToken": "abc123..."
+      }
+    ]
+  }
+}
+```
+
+---
+
+## `interviews.getAvailability(params)`
+
+Fetch available time slots from a team member's Google Calendar connected in Boooply. Use this instead of building your own calendar integration.
+
+```javascript
+const { calendarConnected, slots } = await client.interviews.getAvailability({
+  email: 'bob@company.com',
+  durationMinutes: 45,
+  days: 7,
+});
+
+if (calendarConnected && slots.length > 0) {
+  // Use Boooply's calendar data to create an interview
+  await client.interviews.create({
+    type: 'human',
+    jobRole: 'Designer',
+    durationMinutes: 45,
+    schedulingMode: 'CANDIDATE_PICKS',
+    availableSlots: slots,
+    participants: [
+      { name: 'Jane', email: 'jane@example.com', role: 'CANDIDATE' },
+      { name: 'Bob', email: 'bob@company.com', role: 'INTERVIEWER' },
+    ],
+  });
+} else {
+  // Calendar not connected — provide your own slots or use FIXED mode
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `email` | `string` | Yes | Team member's email |
+| `durationMinutes` | `number` | No | Slot duration in minutes (default: 30) |
+| `days` | `number` | No | Days ahead to look (default: 14, max: 30) |
+
+> If `calendarConnected` is `false`, the user hasn't connected Google Calendar in Boooply. You can either ask them to connect it, or provide `availableSlots` from your own calendar integration.
+
+---
+
+## `interviews.getBusyBlocks(params)`
+
+Fetch raw busy time blocks from a team member's Google Calendar. Use this when you want to compute availability with your own logic.
+
+```javascript
+const { calendarConnected, busyBlocks, timezone } = await client.interviews.getBusyBlocks({
+  email: 'bob@company.com',
+  days: 7,
+});
+
+if (calendarConnected) {
+  // Apply your own rules to compute available slots
+  const slots = myScheduler.findOpenSlots(busyBlocks, { timezone });
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `email` | `string` | Yes | Team member's email |
+| `days` | `number` | No | Days ahead to look (default: 14, max: 30) |
+
+> Use `getAvailability()` for ready-to-use slots. Use `getBusyBlocks()` when you need raw data for custom availability logic.
+
+---
+
+## `interviews.list(params?)`
+
+List interviews with optional filters.
+
+```javascript
+const { interviews, pagination } = await client.interviews.list({
+  status: 'COMPLETED',   // SCHEDULED | ACTIVE | COMPLETED | CANCELLED
+  type: 'AI_ONLY',       // AI_ONLY | HUMAN
+  search: 'frontend',    // Search by role, candidate, email
+  page: 1,
+  limit: 20,
+});
+```
+
+---
+
+## `interviews.get(meetingCode)`
+
+Get full interview details.
+
+```javascript
+const interview = await client.interviews.get('Boooply-AI-1234567890');
+```
+
+---
+
+## `interviews.getTranscript(meetingCode)`
+
+Get the full conversation transcript.
+
+```javascript
+const { transcript } = await client.interviews.getTranscript('Boooply-AI-1234567890');
+// transcript = [{ speaker, role, content, timestamp }, ...]
+```
+
+---
+
+## `interviews.getEvaluation(meetingCode)`
+
+Get AI-generated evaluation and scores.
+
+```javascript
+const evaluation = await client.interviews.getEvaluation('Boooply-AI-1234567890');
+// { recommendation: 'PASS', overallScore: 82, communication: 85, technical: 78, cultureFit: 90 }
+```
+
+---
+
+## `interviews.triggerAnalysis(meetingCode)`
+
+Re-trigger AI analysis on a completed interview.
+
+```javascript
+await client.interviews.triggerAnalysis('Boooply-AI-1234567890');
+```
+
+---
+
+## `interviews.reschedule(meetingCode, data)`
+
+Reschedule an interview.
+
+```javascript
+await client.interviews.reschedule('Boooply-AI-1234567890', {
+  scheduledAt: '2026-04-05T14:00:00Z',
+  durationMinutes: 30,
+  reason: 'Candidate requested new time',
+});
+```
+
+---
+
+## `interviews.cancel(meetingCode, reason?)`
+
+Cancel an interview.
+
+```javascript
+await client.interviews.cancel('Boooply-AI-1234567890', 'Position filled');
+```
+
+---
+
+## `interviews.delete(meetingCode)`
+
+Permanently delete an interview and all associated data.
+
+```javascript
+await client.interviews.delete('Boooply-AI-1234567890');
+```
+
+> **Warning:** This action is irreversible.
+
+---
+
+## `interviews.addParticipant(meetingCode, data)`
+
+Add participants to an existing interview.
+
+```javascript
+await client.interviews.addParticipant('Boooply-AI-1234567890', {
+  participants: [
+    { name: 'New Person', email: 'new@company.com', role: 'INTERVIEWER' }
+  ],
+});
+```

@@ -1,0 +1,34 @@
+# AI Features
+
+The `client.ai` namespace provides AI-powered utilities.
+
+## `ai.generateJobDescription(data)`
+
+Generate a professional job description using AI.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `jobRole` | `string` | Yes | Job title/role |
+| `department` | `string` | No | Department name |
+| `skills` | `string[]` | No | Required skills |
+| `seniority` | `string` | No | `JUNIOR` \| `MID` \| `SENIOR` \| `LEAD` \| `PRINCIPAL` |
+| `workSetup` | `string` | No | `REMOTE` \| `ONSITE` \| `HYBRID` |
+| `employmentType` | `string` | No | `FULL_TIME` \| `PART_TIME` \| `CONTRACT` |
+
+### Example
+
+```javascript
+const { description } = await client.ai.generateJobDescription({
+  jobRole: 'Senior Frontend Engineer',
+  department: 'Engineering',
+  skills: ['React', 'TypeScript', 'GraphQL'],
+  seniority: 'SENIOR',
+  workSetup: 'REMOTE',
+  employmentType: 'FULL_TIME',
+});
+
+console.log(description);
+// "We are looking for a Senior Frontend Engineer to join our Engineering team..."
+```

@@ -1,0 +1,51 @@
+# Platform Keys
+
+For multi-tenant platforms that integrate Boooply for multiple organizations.
+
+## `BoooplyClient.createOrganizationApiKey(config, data)`
+
+Creates an organization-specific API key. Call this from your backend when an organization connects to Boooply.
+
+```javascript
+const { BoooplyClient } = require('@boooply/ai-interviews-sdk');
+
+const result = await BoooplyClient.createOrganizationApiKey(
+  {
+    baseUrl: 'https://api.meetings.boooply.com',
+    platformKey: process.env.BOOOPLY_PLATFORM_KEY,
+  },
+  {
+    userId: '12345',
+    userEmail: 'admin@acme.com',
+    userName: 'Jane Admin',
+    organizationId: 'org_7234567890',
+    organizationName: 'Acme Corporation',
+    teamMembers: [
+      { email: 'bob@acme.com', name: 'Bob', role: 'ADMIN' },
+    ],
+  }
+);
+
+// Store result.apiKey for this organization
+console.log(result.apiKey); // 'bply_tenant_xxxxx'
+```
+
+> **Security:** Only call this from your server. The platform key grants elevated privileges.
+
+### Config parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `baseUrl` | `string` | Yes | Boooply API URL |
+| `platformKey` | `string` | Yes | Your platform master key |
+
+### Data parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userId` | `string` | Yes | User ID from your platform |
+| `userEmail` | `string` | Yes | User email |
+| `userName` | `string` | No | User name |
+| `organizationId` | `string` | Yes | Your platform's org ID |
+| `organizationName` | `string` | No | Organization name |
+| `teamMembers` | `Array` | No | Team members to import |

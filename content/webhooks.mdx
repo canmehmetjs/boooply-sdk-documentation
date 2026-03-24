@@ -1,0 +1,244 @@
+# Webhooks
+
+Boooply sends webhook events to your endpoint when key moments occur during the interview lifecycle. Configure webhooks in your [dashboard](/integrations).
+
+## Events
+
+| Event | Webhook Key | Description |
+|-------|-------------|-------------|
+| Transcript ready | `interview.transcript` | Full conversation transcript with speaker names and timestamps |
+| Evaluation complete | `interview.evaluation` | AI analysis with summary, scores, and recommendation |
+| Scores available | `interview.scores` | Candidate score breakdown (communication, technical, culture fit) |
+| Recording available | `interview.recording` | Video recording ready with download URLs |
+
+> **Note:** Events are prefixed with `interview.` in the webhook payload and headers. When configuring events in the dashboard, use the short key (e.g., `transcript`).
+
+---
+
+## Payload format
+
+Every webhook POST request contains a JSON body with the event type and event-specific data.
+
+### `interview.transcript`
+
+Fired after transcription completes (Whisper for human/team, real-time for AI interviews).
+
+```json
+{
+  "event": "interview.transcript",
+  "meetingCode": "Boooply-AI-1234567890",
+  "title": "Senior Frontend Engineer Interview",
+  "meetingType": "AI_ONLY",
+  "isTeamMeeting": false,
+  "candidateName": "Jane Doe",
+  "jobRole": "Senior Frontend Engineer",
+  "transcript": [
+    {
+      "speaker": "AI Interviewer",
+      "text": "Tell me about your experience with React.",
+      "startMs": 12400
+    },
+    {
+      "speaker": "Jane Doe",
+      "text": "I've been working with React for 5 years...",
+      "startMs": 15200,
+      "endMs": 28900
+    }
+  ],
+  "transcriptCount": 24,
+  "timestamp": "2026-03-21T18:30:00.000Z"
+}
+```
+
+> For human/team meetings, each transcript entry includes both `startMs` and `endMs`. For AI interviews, only `startMs` is available.
+
+---
+
+### `interview.evaluation`
+
+Fired after AI analysis completes. Includes the evaluation summary and top-level scores.
+
+```json
+{
+  "event": "interview.evaluation",
+  "meetingCode": "Boooply-AI-1234567890",
+  "title": "Senior Frontend Engineer Interview",
+  "meetingType": "AI_ONLY",
+  "isTeamMeeting": false,
+  "candidateName": "Jane Doe",
+  "jobRole": "Senior Frontend Engineer",
+  "summary": "Jane demonstrated strong technical skills in React and TypeScript...",
+  "overallRating": 82,
+  "recommendation": "PASS",
+  "timestamp": "2026-03-21T18:35:00.000Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `summary` | `string` | AI-generated evaluation summary |
+| `overallRating` | `number` | Overall score (0–100) |
+| `recommendation` | `string` | `STRONG_PASS`, `PASS`, `REVIEW`, `FAIL`, or `STRONG_FAIL` |
+
+---
+
+### `interview.scores`
+
+Fired alongside `evaluation` — a lightweight payload with just the numerical scores. Useful if you only need numbers for your ATS or dashboard.
+
+```json
+{
+  "event": "interview.scores",
+  "meetingCode": "Boooply-AI-1234567890",
+  "candidateName": "Jane Doe",
+  "jobRole": "Senior Frontend Engineer",
+  "overallRating": 82,
+  "recommendation": "PASS",
+  "communication": 85,
+  "technical": 78,
+  "cultureFit": 90,
+  "timestamp": "2026-03-21T18:35:00.000Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `overallRating` | `number` | Overall score (0–100) |
+| `recommendation` | `string` | `STRONG_PASS`, `PASS`, `REVIEW`, `FAIL`, or `STRONG_FAIL` |
+| `communication` | `number` | Communication score (0–100) |
+| `technical` | `number` | Technical knowledge score (0–100) |
+| `cultureFit` | `number` | Culture fit score (0–100) |
+
+---
+
+### `interview.recording`
+
+Fired when the video recording has been processed and uploaded. Includes two URLs:
+
+```json
+{
+  "event": "interview.recording",
+  "meetingCode": "Boooply-AI-1234567890",
+  "title": "Senior Frontend Engineer Interview",
+  "duration": 1234,
+  "format": "mp4",
+  "videoUrl": "https://s3.amazonaws.com/...?X-Amz-Expires=604800&...",
+  "videoApiUrl": "https://api.meetings.boooply.com/api/integration/interviews/Boooply-AI-1234567890/recording",
+  "timestamp": "2026-03-21T18:40:00.000Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `duration` | `number` | Recording duration in seconds |
+| `format` | `string` | File format (e.g., `mp4`) |
+| `videoUrl` | `string` | Pre-signed S3 URL — **expires after 7 days** |
+| `videoApiUrl` | `string` | Stable API endpoint — generates a fresh download URL on each request (requires API key auth) |
+
+> **Tip:** Store the `videoApiUrl` in your system. It always works and generates a fresh pre-signed URL on each request, while `videoUrl` expires after 7 days.
+
+---
+
+## Headers
+
+Every webhook request includes these headers:
+
+| Header | Description | Example |
+|--------|-------------|---------|
+| `Content-Type` | Always JSON | `application/json` |
+| `X-Boooply-Signature` | HMAC-SHA256 signature of the payload | `a1b2c3d4...` |
+| `X-Boooply-Event` | Event type | `interview.evaluation` |
+| `X-Boooply-Platform` | Platform identifier | `custom` |
+| `X-Boooply-Meeting-Id` | Meeting code for this event | `Boooply-AI-1234567890` |
+| `Authorization` | Bearer token (your webhook secret) | `Bearer whsec_...` |
+
+---
+
+## Verifying signatures
+
+Every webhook includes an `X-Boooply-Signature` header containing an HMAC-SHA256 signature of the JSON payload, signed with your webhook secret.
+
+### Node.js
+
+```javascript
+const crypto = require('crypto');
+
+function verifyWebhookSignature(payload, signature, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(JSON.stringify(payload))
+    .digest('hex');
+
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected)
+  );
+}
+
+// Express example
+app.post('/webhooks/boooply', express.json(), (req, res) => {
+  const signature = req.headers['x-boooply-signature'];
+  const isValid = verifyWebhookSignature(req.body, signature, process.env.BOOOPLY_WEBHOOK_SECRET);
+
+  if (!isValid) {
+    return res.status(401).send('Invalid signature');
+  }
+
+  const event = req.headers['x-boooply-event'];
+
+  switch (event) {
+    case 'interview.evaluation':
+      console.log(`Score: ${req.body.overallRating}/100 — ${req.body.recommendation}`);
+      break;
+    case 'interview.transcript':
+      console.log(`Transcript: ${req.body.transcriptCount} messages`);
+      break;
+    case 'interview.scores':
+      console.log(`Technical: ${req.body.technical}, Communication: ${req.body.communication}`);
+      break;
+    case 'interview.recording':
+      console.log(`Recording: ${req.body.videoApiUrl}`);
+      break;
+  }
+
+  res.status(200).send('OK');
+});
+```
+
+### Python
+
+```python
+import hmac
+import hashlib
+import json
+
+def verify_webhook_signature(payload: dict, signature: str, secret: str) -> bool:
+    expected = hmac.new(
+        secret.encode(),
+        json.dumps(payload, separators=(',', ':')).encode(),
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(signature, expected)
+```
+
+---
+
+## Retry policy
+
+Failed webhooks are retried automatically with exponential backoff:
+
+- **5 attempts** total
+- Backoff: 5s → 10s → 20s → 40s → 80s
+- Only `2xx` status codes are treated as successful
+- After all retries fail, the delivery is marked as failed
+
+You can view delivery history and retry failed webhooks from the [dashboard](/integrations).
+
+---
+
+## Best practices
+
+- **Respond quickly** — Return a `200` status within 30 seconds. Process data asynchronously if needed.
+- **Verify signatures** — Always validate the `X-Boooply-Signature` header to ensure payloads haven't been tampered with.
+- **Handle duplicates** — Use the `meetingCode` + event type as an idempotency key. In rare cases, the same event may be delivered more than once.
+- **Use the stable URL** — For recordings, store `videoApiUrl` instead of `videoUrl` since pre-signed URLs expire after 7 days.

@@ -1,0 +1,46 @@
+# Boooply AI Interviews
+
+Build AI-powered interviews into your product in minutes.
+
+Boooply provides a complete platform for conducting AI interviews, human interviews, and team meetings — with real-time transcription, AI evaluation, and candidate scoring.
+
+## What you can do
+
+- **AI Interviews** — An AI agent conducts the interview, asks questions, and evaluates candidates automatically
+- **Human Interviews** — Real interviewers with AI-powered transcription, recording, and analysis
+- **Team Meetings** — Internal meetings with transcription and AI-generated notes
+- **Evaluation & Scoring** — AI scores candidates on communication, technical skills, and culture fit
+- **Webhooks** — Get notified when transcripts, evaluations, and scores are ready
+
+## Quick Start
+
+```bash
+npm install @boooply/ai-interviews-sdk
+```
+
+```javascript
+const { BoooplyClient } = require('@boooply/ai-interviews-sdk');
+
+const client = new BoooplyClient({
+  apiKey: 'bply_...',
+  baseUrl: 'https://api.meetings.boooply.com',
+});
+
+// Create an AI interview in one call
+const interview = await client.interviews.create({
+  type: 'ai',
+  jobRole: 'Frontend Engineer',
+  candidate: { name: 'Jane Doe', email: 'jane@example.com' },
+  skills: ['React', 'TypeScript'],
+  durationMinutes: 20,
+});
+
+console.log(interview.url); // Send this URL to the candidate
+```
+
+## How it works
+
+1. **Create an interview** via SDK or API
+2. **Candidate joins** the meeting URL
+3. **AI conducts** the interview (or human interviewer joins)
+4. **Get results** — transcript, evaluation, scores delivered via API or webhook

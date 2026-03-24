@@ -1,0 +1,57 @@
+# Candidate Feedback
+
+Send AI-generated feedback emails to candidates after their interview. The feedback is encouraging, constructive, and never exposes internal scores or recommendations.
+
+## Enable feedback
+
+Set `sendCandidateFeedback: true` when creating the interview:
+
+```javascript
+const interview = await client.interviews.create({
+  type: 'ai',
+  jobRole: 'Frontend Engineer',
+  candidate: { name: 'Jane Doe', email: 'jane@example.com' },
+  sendCandidateFeedback: true,
+});
+```
+
+## What the candidate receives
+
+After the AI evaluation completes, the candidate gets an email with:
+
+- **Thanks** for their time
+- **2-3 strengths** highlighted (specific to their performance)
+- **2-3 growth tips** (framed as advice, never criticism)
+- **Encouragement** to keep going
+
+## What the candidate never sees
+
+- Raw scores (0-100)
+- PASS / FAIL / REVIEW recommendation
+- Red flags or concerns
+- Comparison with other candidates
+- Internal recruiter notes
+
+## Tone adapts to performance
+
+| Performance | Email tone |
+|-------------|-----------|
+| Strong | Enthusiastic praise + minor polish tips |
+| Average | Genuine encouragement + specific improvement areas |
+| Weak | Respectful, focused on learning opportunities, still finds positives |
+
+## Example email
+
+> Hi Jane,
+>
+> Thank you for taking the time to interview for the Frontend Engineer role. I wanted to share some thoughts on your conversation.
+>
+> **What stood out:** Your understanding of React's component lifecycle was impressive, and the way you approached the state management question showed real practical experience. Your enthusiasm for the role was clear throughout.
+>
+> **Tips for future interviews:** Consider preparing more specific examples from your projects — concrete numbers and outcomes make your experience more tangible. Also, when discussing system design, try structuring your answer with a brief overview before diving into details.
+>
+> You have a solid foundation and clear potential. Best of luck with your next steps!
+
+## Timing
+
+The feedback email is sent automatically within minutes of the evaluation completing — no action needed from the recruiter.

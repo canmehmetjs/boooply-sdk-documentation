@@ -1,0 +1,39 @@
+# Transcript API
+
+## Get Transcript
+
+```
+GET /api/integration/interviews/:meetingCode/transcript
+```
+
+Returns the full interview transcript with speaker attribution.
+
+### Response
+
+```json
+{
+  "transcript": [
+    {
+      "speaker": "AI Interviewer",
+      "role": "AI",
+      "content": "Tell me about your experience with React.",
+      "timestamp": "2026-03-21T14:00:05Z"
+    },
+    {
+      "speaker": "Jane Doe",
+      "role": "CANDIDATE",
+      "content": "I've been working with React for about 4 years...",
+      "timestamp": "2026-03-21T14:00:12Z"
+    }
+  ]
+}
+```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `speaker` | `string` | Speaker name |
+| `role` | `string` | `AI` \| `CANDIDATE` \| `INTERVIEWER` \| `HOST` |
+| `content` | `string` | Message text |
+| `timestamp` | `string` | ISO 8601 datetime |

@@ -1,0 +1,96 @@
+# Create an AI Interview
+
+This guide walks through creating a fully automated AI interview — from setup to getting the evaluation results.
+
+## 1. Create the interview
+
+```javascript
+const interview = await client.interviews.create({
+  type: 'ai',
+  jobRole: 'Senior Frontend Engineer',
+  candidate: {
+    name: 'Jane Doe',
+    email: 'jane@example.com',
+  },
+  // Optional: provide CV for smarter questions
+  candidateCV: resumeText,
+  // Optional: specify what to evaluate
+  skills: ['React', 'TypeScript', 'System Design'],
+  seniority: 'SENIOR',
+  department: 'Engineering',
+  // Optional: set duration (default: 30 min)
+  durationMinutes: 25,
+  // Optional: let AI generate questions based on the role
+  aiGenerate: true,
+  // Optional: add your own questions too
+  questions: [
+    'Describe a complex React architecture you built',
+    'How do you approach code reviews?',
+  ],
+});
+```
+
+## 2. Send the join URL to the candidate
+
+```javascript
+// The candidate opens this URL in their browser
+const joinUrl = interview.url;
+// Example: https://meetings.boooply.com/join/Boooply-AI-1234567890
+
+// Send via your email system
+await sendEmail({
+  to: 'jane@example.com',
+  subject: 'Your AI Interview is Ready',
+  body: `Click here to start: ${joinUrl}`,
+});
+```
+
+## 3. What happens during the interview
+
+1. Candidate opens the URL and allows camera/microphone
+2. AI interviewer greets them and starts asking questions
+3. AI adapts follow-up questions based on responses
+4. Session is recorded (video + audio)
+5. Interview ends when time is up or candidate finishes
+
+## 4. Get the results
+
+After the interview completes, the AI automatically analyzes the conversation:
+
+```javascript
+// Check if evaluation is ready
+const details = await client.interviews.get(interview.meetingCode);
+
+if (details.meeting.counts.hasEvaluation) {
+  const evaluation = await client.interviews.getEvaluation(interview.meetingCode);
+
+  console.log('Recommendation:', evaluation.recommendation); // PASS | FAIL | REVIEW
+  console.log('Overall Score:', evaluation.overallScore);     // 0-100
+  console.log('Communication:', evaluation.communication);
+  console.log('Technical:', evaluation.technical);
+  console.log('Culture Fit:', evaluation.cultureFit);
+}
+
+// Get the full transcript
+const { transcript } = await client.interviews.getTranscript(interview.meetingCode);
+```
+
+## 5. Or use webhooks
+
+Instead of polling, set up a webhook to receive results automatically:
+
+```javascript
+// Your webhook endpoint receives this payload:
+{
+  "event": "evaluation.completed",
+  "data": {
+    "meetingCode": "Boooply-AI-1234567890",
+    "evaluation": {
+      "overallScore": 82,
+      "recommendation": "PASS"
+    }
+  }
+}
+```
+
+See [Webhooks](/docs/webhooks) for setup instructions.

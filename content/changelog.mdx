@@ -1,0 +1,61 @@
+# Changelog
+
+## v2.2.0 — March 2026
+
+### Added
+- **Calendar availability** — `interviews.getAvailability()` fetches available time slots from a team member's Google Calendar connected in Boooply
+- **Busy blocks** — `interviews.getBusyBlocks()` returns raw busy time blocks for custom availability logic
+- **Scheduling modes** — `IMMEDIATE`, `FIXED`, `CANDIDATE_PICKS` with full documentation
+- **Company name** — `companyName` parameter for `interviews.create()` (useful for agencies)
+- **Available slots** — `availableSlots` parameter for `CANDIDATE_PICKS` scheduling mode (max 50 slots)
+- **Webhook docs rewrite** — Updated with real per-event payloads, all headers, Python verification example
+- **Email notifications** — Documented that Boooply sends invitation emails from `noreply@boooply.com`
+
+### Changed
+- `CANDIDATE_PICKS` scheduling mode restricted to AI and Human interviews only (not team meetings)
+- Removed deprecated `screenshots` webhook event
+
+---
+
+## v2.1.0 — March 2026
+
+### Added
+- **Team meeting recording & transcription** — `transcriptionEnabled` parameter for team meetings
+- **Agenda support** — `agenda` parameter for team meeting creation
+- **Video recording** — Room Composite recording for team and human interviews
+- **AI-powered transcription** — Self-hosted Whisper (faster-whisper large-v3-turbo) with speaker diarization
+- **Meeting recap** — AI-generated summary, action items, decisions for team meetings
+- **Interviewer evaluation** — AI analysis of interviewer performance (OWNER/ADMIN only)
+- **In-meeting features** — Shared notes, live polls, agenda tracking with real-time sync
+- **Video thumbnails** — Auto-generated from recordings for interview listing cards
+
+---
+
+## v2.0.0 — March 2026
+
+### Breaking Changes
+- Removed all legacy methods — use namespaced API (`client.interviews.create()`)
+- Removed `HYBRID` meeting type — use `type: 'team'` instead
+- Constructor no longer accepts `organizationId` — API key is org-scoped
+
+### Added
+- **Namespaced API** — `client.interviews.*`, `client.ai.*`, `client.organization.*`
+- **Unified interview creation** — single `interviews.create()` for AI, human, and team
+- `interviews.getTranscript()` — Get interview transcript
+- `interviews.getEvaluation()` — Get AI evaluation scores
+- `interviews.triggerAnalysis()` — Re-run AI analysis
+- `ai.generateJobDescription()` — Generate job description with AI
+- `externalJobId` parameter for ATS position linking
+- `isTeamMeeting` flag for team meetings
+
+## v1.7.0 — January 2026
+
+- Added `cancelInterview()`, `rescheduleInterview()`, `deleteInterview()`
+- TypeScript type definitions via JSDoc
+
+## v1.0.0 — January 2025
+
+- Initial release
+- Meeting creation and management
+- AI interview creation
+- Participant mappers

@@ -1,0 +1,26 @@
+# Create a Human Interview
+
+Set up a video interview between a candidate and human interviewers, with AI-powered transcription and analysis.
+
+## Create the interview
+
+```javascript
+const interview = await client.interviews.create({
+  type: 'human',
+  jobRole: 'Product Manager',
+  scheduledAt: '2026-04-01T14:00:00Z',
+  durationMinutes: 45,
+  participants: [
+    { name: 'Jane Doe', email: 'jane@example.com', role: 'CANDIDATE' },
+    { name: 'Bob Smith', email: 'bob@company.com', role: 'INTERVIEWER' },
+    { name: 'Alice Chen', email: 'alice@company.com', role: 'INTERVIEWER' },
+  ],
+  skills: ['Product Strategy', 'User Research', 'Agile'],
+  questions: [
+    'Walk me through a product launch you led',
+    'How do you prioritize features?',
+  ],
+});
+```
+
+Each participant receives a unique join URL. The interview is automatically transcribed and analyzed after it ends.

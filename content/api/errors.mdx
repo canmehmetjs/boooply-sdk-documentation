@@ -1,0 +1,37 @@
+# Errors
+
+The API uses standard HTTP status codes and returns error details in JSON.
+
+```json
+{
+  "success": false,
+  "error": "Invalid or inactive API key.",
+  "code": "INVALID_API_KEY"
+}
+```
+
+## Status Codes
+
+| Code | Meaning |
+|------|---------|
+| `200` | Success |
+| `400` | Bad request — check your parameters |
+| `401` | Invalid or expired API key |
+| `403` | Insufficient permissions |
+| `404` | Resource not found |
+| `409` | Conflict — resource already exists |
+| `422` | Validation error — check field values |
+| `429` | Rate limit exceeded — slow down |
+| `500` | Server error — contact support |
+
+## Error Handling
+
+```javascript
+try {
+  const interview = await client.interviews.create({ ... });
+} catch (error) {
+  console.error(error.message);  // 'Boooply API 400: {...}'
+  console.error(error.status);   // 400
+  console.error(error.response); // Full response
+}
+```

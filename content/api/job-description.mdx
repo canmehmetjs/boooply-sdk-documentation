@@ -1,0 +1,31 @@
+# Job Description API
+
+## Generate Job Description
+
+```
+POST /api/integration/generate-job-description
+```
+
+Generate a professional job description using AI.
+
+### Request
+
+```json
+{
+  "jobRole": "Senior Frontend Engineer",
+  "department": "Engineering",
+  "skills": ["React", "TypeScript", "GraphQL"],
+  "seniority": "SENIOR",
+  "workSetup": "REMOTE",
+  "employmentType": "FULL_TIME"
+}
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "description": "We are looking for a Senior Frontend Engineer to join our Engineering team..."
+}
+```

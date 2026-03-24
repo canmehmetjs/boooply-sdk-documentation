@@ -1,0 +1,53 @@
+# Upload Candidate CV
+
+Providing a candidate's CV helps the AI generate better, more relevant interview questions and evaluation.
+
+## Pass CV as text
+
+```javascript
+const interview = await client.interviews.create({
+  type: 'ai',
+  jobRole: 'Backend Engineer',
+  candidate: { name: 'Jane', email: 'jane@example.com' },
+  candidateCV: `
+    Jane Doe
+    Senior Backend Engineer
+
+    Experience:
+    - 5 years at TechCorp building microservices with Node.js
+    - Led migration from monolith to event-driven architecture
+    - Managed team of 4 engineers
+
+    Skills: Node.js, TypeScript, PostgreSQL, Redis, AWS, Docker
+
+    Education: BS Computer Science, MIT
+  `,
+});
+```
+
+## Parse CV from PDF first
+
+If you have a PDF, extract the text first and pass it:
+
+```javascript
+// Use any PDF parser (pdf-parse, pdfjs-dist, etc.)
+const pdfParse = require('pdf-parse');
+const fs = require('fs');
+
+const pdfBuffer = fs.readFileSync('resume.pdf');
+const { text } = await pdfParse(pdfBuffer);
+
+const interview = await client.interviews.create({
+  type: 'ai',
+  jobRole: 'Frontend Engineer',
+  candidate: { name: 'Jane', email: 'jane@example.com' },
+  candidateCV: text,
+});
+```
+
+## What the AI does with the CV
+
+- Identifies candidate's skills and experience level
+- Generates questions relevant to their background
+- Evaluates responses in context of their claimed experience
+- Flags gaps between CV claims and interview responses

@@ -1,0 +1,28 @@
+# Authentication
+
+All API requests require a Bearer token in the `Authorization` header.
+
+```bash
+curl https://api.meetings.boooply.com/api/integration/interviews \
+  -H "Authorization: Bearer bply_org_xxxxxxxxxxxxx"
+```
+
+## API Keys
+
+API keys follow the format `bply_org_xxxxxxxxxxxxx` for organization keys and `bply_platform_xxxxxxxxxxxxx` for platform keys.
+
+- **Organization keys** — Scoped to a single organization
+- **Platform keys** — For multi-tenant platforms managing multiple organizations
+
+## Rate Limits
+
+| Endpoint | Limit |
+|----------|-------|
+| Read operations (GET) | 100 req/min |
+| Write operations (POST/PATCH/DELETE) | 10 req/min |
+| AI generation | 5 req/min |
+
+Rate limit headers are included in all responses:
+- `X-RateLimit-Limit` — Max requests per window
+- `X-RateLimit-Remaining` — Remaining requests
+- `X-RateLimit-Reset` — Window reset time

@@ -1,0 +1,47 @@
+# Evaluation API
+
+## Get Evaluation
+
+```
+GET /api/integration/interviews/:meetingCode/evaluation
+```
+
+Returns AI-generated evaluation scores and analysis for a completed interview.
+
+### Response
+
+```json
+{
+  "recommendation": "PASS",
+  "overallScore": 82,
+  "communication": 85,
+  "technical": 78,
+  "cultureFit": 90,
+  "questionEvaluations": [
+    {
+      "question": "Tell me about your React experience",
+      "score": 8,
+      "feedback": "Strong understanding of React hooks and state management"
+    }
+  ]
+}
+```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `recommendation` | `string` | `PASS` \| `FAIL` \| `REVIEW` |
+| `overallScore` | `number` | 0-100 overall score |
+| `communication` | `number` | 0-100 communication score |
+| `technical` | `number` | 0-100 technical skills score |
+| `cultureFit` | `number` | 0-100 culture fit score |
+| `questionEvaluations` | `array` | Per-question scores and feedback |
+
+## Trigger Analysis
+
+```
+POST /api/integration/interviews/:meetingCode/analyze
+```
+
+Re-runs AI analysis on a completed interview. Useful if you want to regenerate the evaluation.

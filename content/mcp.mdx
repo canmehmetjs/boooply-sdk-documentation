@@ -1,0 +1,158 @@
+# MCP Server
+
+The Boooply MCP (Model Context Protocol) server lets AI assistants like Claude, Cursor, and other MCP-compatible tools manage interviews directly through natural language.
+
+## Setup
+
+No installation needed — runs directly via `npx`.
+
+### Claude Desktop
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "boooply": {
+      "command": "npx",
+      "args": ["-y", "@boooply/mcp-server@latest"],
+      "env": {
+        "BOOOPLY_API_KEY": "bply_...",
+        "BOOOPLY_API_URL": "https://api.meetings.boooply.com"
+      }
+    }
+  }
+}
+```
+
+### Claude Code
+
+Add to your project's `.claude/settings.json` or global `~/.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "boooply": {
+      "command": "npx",
+      "args": ["-y", "@boooply/mcp-server@latest"],
+      "env": {
+        "BOOOPLY_API_KEY": "bply_...",
+        "BOOOPLY_API_URL": "https://api.meetings.boooply.com"
+      }
+    }
+  }
+}
+```
+
+### Cursor
+
+Add to your `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "boooply": {
+      "command": "npx",
+      "args": ["-y", "@boooply/mcp-server@latest"],
+      "env": {
+        "BOOOPLY_API_KEY": "bply_...",
+        "BOOOPLY_API_URL": "https://api.meetings.boooply.com"
+      }
+    }
+  }
+}
+```
+
+### VS Code
+
+Add to your `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "boooply": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@boooply/mcp-server@latest"],
+      "env": {
+        "BOOOPLY_API_KEY": "bply_...",
+        "BOOOPLY_API_URL": "https://api.meetings.boooply.com"
+      }
+    }
+  }
+}
+```
+
+### SSE Mode (for web-based clients)
+
+```bash
+BOOOPLY_API_KEY=bply_... BOOOPLY_API_URL=https://api.meetings.boooply.com npx -y @boooply/mcp-server@latest --sse
+```
+
+## Available Tools
+
+### Interview Management
+
+| Tool | Description |
+|------|-------------|
+| `create_ai_interview` | Create an AI-conducted interview with configurable skills, questions, and evaluation focus |
+| `create_human_interview` | Create a video interview with human interviewers. Supports `CANDIDATE_PICKS` scheduling |
+| `create_team_meeting` | Create an internal team meeting with transcription and AI notes |
+| `list_interviews` | List interviews with filtering by status, type, and search |
+| `get_interview` | Get full details of an interview by meeting code |
+| `cancel_interview` | Cancel a scheduled interview |
+| `reschedule_interview` | Reschedule an interview to a new time |
+
+### Results & Analysis
+
+| Tool | Description |
+|------|-------------|
+| `get_evaluation` | Get AI-generated scores, summary, strengths, and recommendations |
+| `get_transcript` | Get the full conversation transcript with speaker attribution |
+| `trigger_analysis` | Re-run AI analysis on a completed interview |
+
+### Calendar & Availability
+
+| Tool | Description |
+|------|-------------|
+| `get_availability` | Get available time slots from an interviewer's Google Calendar connected in Boooply |
+| `get_busy_blocks` | Get raw busy time blocks from an interviewer's calendar |
+
+### AI Features
+
+| Tool | Description |
+|------|-------------|
+| `generate_job_description` | Generate a professional job description using AI |
+
+## Example Usage
+
+With Claude or any MCP-compatible assistant:
+
+```
+"Create an AI interview for jane@example.com for the Senior React Developer role,
+focus on technical knowledge, 25 minutes, generate questions with AI"
+
+"Check Bob's availability for next week — he's at bob@company.com, 45-minute slots"
+
+"List all completed interviews from this week"
+
+"Get the evaluation for Boooply-AI-1234567890"
+
+"Cancel interview Boooply-AI-9876543210 — position was filled"
+```
+
+## Scheduling Modes
+
+When creating interviews, you can specify how scheduling works:
+
+| Mode | Available For | Description |
+|------|--------------|-------------|
+| `IMMEDIATE` | AI, Human, Team | Starts right away |
+| `FIXED` | AI, Human, Team | Scheduled for a specific datetime |
+| `CANDIDATE_PICKS` | AI, Human only | Candidate receives a booking link to choose a time |
+
+For `CANDIDATE_PICKS`, use `get_availability` first to fetch the interviewer's open slots, then pass them as `availableSlots`.
+
+## Emails
+
+When interviews are created, Boooply automatically sends invitation emails to all participants from `noreply@boooply.com`. Make sure candidates know to expect this.
