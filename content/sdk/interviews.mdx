@@ -12,6 +12,9 @@ Create an AI interview, human interview, or team meeting.
 |-----------|------|----------|-------------|
 | `type` | `'ai' \| 'human' \| 'team'` | Yes | Interview type |
 | `jobRole` | `string` | Yes (ai/human) | Job role or title |
+| `title` | `string` | No | Custom title override |
+| `category` | `string` | No | `SCREENING` \| `TECHNICAL` \| `BEHAVIORAL` \| `ASSIGNMENT` \| `CULTURAL` \| `CASE_STUDY` \| `PANEL` \| `FINAL` |
+| `stage` | `string` | No | Free-form stage label (e.g., "Round 1", "Final Interview") |
 | `companyName` | `string` | No | Company name (defaults to your organization name) |
 | `candidate` | `{ name, email }` | Yes (ai) | Candidate info |
 | `participants` | `Array<{ name, email, role }>` | Yes (human/team) | Participant list |
@@ -276,4 +279,42 @@ await client.interviews.addParticipant('Boooply-AI-1234567890', {
     { name: 'New Person', email: 'new@company.com', role: 'INTERVIEWER' }
   ],
 });
+```
+
+---
+
+## `interviews.getParticipants(meetingCode)`
+
+Get all participants for an interview.
+
+```javascript
+const { participants } = await client.interviews.getParticipants('Boooply-AI-1234567890');
+// [{ id, name, email, role, joinToken, joinedAt, leftAt, isActive }]
+```
+
+---
+
+## `interviews.removeParticipant(meetingCode, participantId)`
+
+Remove a participant from an interview.
+
+```javascript
+await client.interviews.removeParticipant('Boooply-AI-1234567890', 'participant-uuid');
+```
+
+---
+
+## `interviews.getRecording(meetingCode)`
+
+Get the video recording for a completed interview.
+
+```javascript
+const { recording } = await client.interviews.getRecording('Boooply-AI-1234567890');
+
+if (recording) {
+  console.log(recording.videoUrl);    // pre-signed S3 URL (7 days)
+  console.log(recording.videoApiUrl); // stable URL (always works)
+  console.log(recording.duration);    // seconds
+  console.log(recording.format);      // 'mp4'
+}
 ```

@@ -38,6 +38,9 @@ curl -X POST https://api.meetings.boooply.com/api/integration/interviews \
 | `availableSlots` | `array` | No | Time slots for `CANDIDATE_PICKS` mode — `[{ start, end }]` (max 50). Each slot's duration should match `durationMinutes` |
 | `questions` | `array` | No | Custom questions |
 | `aiGenerate` | `boolean` | No | Auto-generate questions |
+| `title` | `string` | No | Custom title override |
+| `category` | `string` | No | `SCREENING` \| `TECHNICAL` \| `BEHAVIORAL` \| `ASSIGNMENT` \| `CULTURAL` \| `CASE_STUDY` \| `PANEL` \| `FINAL` |
+| `stage` | `string` | No | Free-form stage label (e.g., "Round 1", "Final Interview") |
 | `companyName` | `string` | No | Company name (defaults to org name) |
 | `evaluationFocus` | `string` | No | `knowledge` \| `balanced` \| `communication` \| `problem_solving` \| `culture` |
 | `sendCandidateFeedback` | `boolean` | No | Send feedback email to candidate |
@@ -202,3 +205,69 @@ DELETE /api/integration/interviews/:meetingCode
 ```
 
 > **Warning:** This permanently deletes the interview and all associated data.
+
+---
+
+## Get Participants
+
+```
+GET /api/integration/interviews/:meetingCode/participants
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "participants": [
+    {
+      "id": "uuid",
+      "name": "Jane Doe",
+      "email": "jane@example.com",
+      "role": "CANDIDATE",
+      "joinToken": "abc123...",
+      "joinedAt": "2026-04-01T14:00:00Z",
+      "leftAt": null,
+      "isActive": true
+    }
+  ],
+  "total": 2
+}
+```
+
+---
+
+## Remove Participant
+
+```
+DELETE /api/integration/interviews/:meetingCode/participants/:participantId
+```
+
+Returns `{ success: true, message: "Participant Jane Doe removed" }`.
+
+---
+
+## Get Recording
+
+```
+GET /api/integration/interviews/:meetingCode/recording
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "recording": {
+    "duration": 1234,
+    "format": "mp4",
+    "createdAt": "2026-04-01T14:30:00Z",
+    "videoUrl": "https://s3.amazonaws.com/...?X-Amz-Expires=604800",
+    "videoApiUrl": "https://api.meetings.boooply.com/api/integration/interviews/Boooply-AI-123/recording"
+  }
+}
+```
+
+If no recording exists: `{ "success": true, "recording": null, "message": "No recording available" }`.
+
+> **Tip:** Store `videoApiUrl` — it generates a fresh pre-signed URL on each request. The `videoUrl` expires after 7 days.

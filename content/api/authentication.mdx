@@ -7,12 +7,59 @@ curl https://api.meetings.boooply.com/api/integration/interviews \
   -H "Authorization: Bearer bply_org_xxxxxxxxxxxxx"
 ```
 
-## API Keys
+## Which key should you use?
 
-API keys follow the format `bply_org_xxxxxxxxxxxxx` for organization keys and `bply_platform_xxxxxxxxxxxxx` for platform keys.
+There are two integration approaches depending on your use case:
 
-- **Organization keys** — Scoped to a single organization
-- **Platform keys** — For multi-tenant platforms managing multiple organizations
+### Direct integration (Organization key)
+
+Use this when **your company is integrating Boooply directly** — you manage your own API key and call the Boooply API from your backend.
+
+- Get your API key from the [Boooply dashboard](https://boooply.com) under **Integrations > REST API & SDK**
+- Key format: `bply_org_xxxxxxxxxxxxx`
+- Scoped to your single organization
+- You write the code, you manage the key
+
+```bash
+# .env
+BOOOPLY_API_KEY=bply_org_xxxxxxxxxxxxx
+```
+
+### Platform integration (Platform key)
+
+Use this when **you're building a platform** (like an ATS, HRIS, or recruitment tool) that offers Boooply to your customers. Your customers click "Connect Boooply" in your product — they never see or manage API keys.
+
+- You receive a platform master key from Boooply: `bply_platform_xxxxxxxxxxxxx`
+- Your backend calls `createOrganizationApiKey()` to auto-provision a key for each customer organization
+- Each customer gets their own `bply_org_...` key, stored in your database
+- The platform key lives in your `.env` — never exposed to end users
+
+```bash
+# .env (your platform backend)
+BOOOPLY_PLATFORM_KEY=bply_platform_xxxxxxxxxxxxx
+```
+
+```javascript
+// When a customer connects Boooply in your platform
+const result = await BoooplyClient.createOrganizationApiKey(
+  {
+    baseUrl: 'https://api.meetings.boooply.com',
+    platformKey: process.env.BOOOPLY_PLATFORM_KEY,
+  },
+  {
+    userId: customer.id,
+    userEmail: customer.email,
+    userName: customer.name,
+    organizationId: customer.orgId,
+    organizationName: customer.companyName,
+  }
+);
+
+// Store this — use it for all API calls on behalf of this customer
+await db.saveBoooplyApiKey(customer.orgId, result.apiKey);
+```
+
+See [Platform Keys](/sdk/platform-keys) for the full reference.
 
 ## Rate Limits
 

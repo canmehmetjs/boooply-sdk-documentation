@@ -1,14 +1,25 @@
 # Platform Keys
 
-For multi-tenant platforms that integrate Boooply for multiple organizations.
+Platform keys are for **multi-tenant platforms** (ATS, HRIS, recruitment tools) that integrate Boooply on behalf of their customers. If you're integrating Boooply for your own company, use an [organization key](/api/authentication) instead.
+
+## How it works
+
+1. **You get a platform key** from Boooply (`bply_platform_xxxxxxxxxxxxx`)
+2. **Customer clicks "Connect Boooply"** in your product
+3. **Your backend calls `createOrganizationApiKey()`** — Boooply creates an org and returns a key
+4. **You store the org key** in your database, associated with that customer
+5. **All API calls for that customer** use their org key — interviews, evaluations, transcripts, etc.
+
+The customer never sees or manages any keys. The entire flow is seamless from their perspective.
 
 ## `BoooplyClient.createOrganizationApiKey(config, data)`
 
-Creates an organization-specific API key. Call this from your backend when an organization connects to Boooply.
+Creates an organization-specific API key. Call this **once per customer** when they connect Boooply in your platform.
 
 ```javascript
 const { BoooplyClient } = require('@boooply/ai-interviews-sdk');
 
+// Called when a customer clicks "Connect Boooply" in your platform
 const result = await BoooplyClient.createOrganizationApiKey(
   {
     baseUrl: 'https://api.meetings.boooply.com',
@@ -18,26 +29,26 @@ const result = await BoooplyClient.createOrganizationApiKey(
     userId: '12345',
     userEmail: 'admin@acme.com',
     userName: 'Jane Admin',
-    organizationId: 'org_7234567890',
+    organizationId: 'org_7234567890',      // your platform's org ID
     organizationName: 'Acme Corporation',
-    teamMembers: [
+    teamMembers: [                         // optional — import team
       { email: 'bob@acme.com', name: 'Bob', role: 'ADMIN' },
+      { email: 'carol@acme.com', name: 'Carol', role: 'MEMBER' },
     ],
   }
 );
 
-// Store result.apiKey for this organization
-console.log(result.apiKey); // 'bply_tenant_xxxxx'
+// Store this key — use it for all API calls on behalf of this customer
+const orgApiKey = result.apiKey; // 'bply_org_xxxxx'
+await db.saveBoooplyKey(customerId, orgApiKey);
 ```
-
-> **Security:** Only call this from your server. The platform key grants elevated privileges.
 
 ### Config parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `baseUrl` | `string` | Yes | Boooply API URL |
-| `platformKey` | `string` | Yes | Your platform master key |
+| `platformKey` | `string` | Yes | Your platform master key (`bply_platform_...`) |
 
 ### Data parameters
 
@@ -48,4 +59,85 @@ console.log(result.apiKey); // 'bply_tenant_xxxxx'
 | `userName` | `string` | No | User name |
 | `organizationId` | `string` | Yes | Your platform's org ID |
 | `organizationName` | `string` | No | Organization name |
-| `teamMembers` | `Array` | No | Team members to import |
+| `teamMembers` | `Array` | No | Team members to import (`[{ email, name, role }]`) |
+
+> **Security:** Only call this from your server. The platform key grants elevated privileges — it can create organizations and API keys. Never expose it in client-side code.
+
+## Using the org key
+
+After provisioning, create a `BoooplyClient` instance with the customer's org key:
+
+```javascript
+// For each customer, use their stored org key
+const client = new BoooplyClient({
+  apiKey: customer.boooplyApiKey, // the key you stored from createOrganizationApiKey()
+  baseUrl: 'https://api.meetings.boooply.com',
+});
+
+// Now all operations are scoped to that customer's organization
+const interview = await client.interviews.create({
+  type: 'ai',
+  jobRole: 'Frontend Engineer',
+  candidate: { name: 'Jane', email: 'jane@example.com' },
+});
+```
+
+## Full integration example
+
+```javascript
+// routes/integrations.js — your platform's backend
+
+const { BoooplyClient } = require('@boooply/ai-interviews-sdk');
+
+// 1. Customer connects Boooply
+app.post('/api/connect-boooply', async (req, res) => {
+  const customer = await getCustomer(req.user.orgId);
+
+  const result = await BoooplyClient.createOrganizationApiKey(
+    {
+      baseUrl: 'https://api.meetings.boooply.com',
+      platformKey: process.env.BOOOPLY_PLATFORM_KEY,
+    },
+    {
+      userId: req.user.id,
+      userEmail: req.user.email,
+      userName: req.user.name,
+      organizationId: customer.id,
+      organizationName: customer.name,
+    }
+  );
+
+  await db.update('customers', customer.id, { boooplyApiKey: result.apiKey });
+  res.json({ success: true, message: 'Boooply connected' });
+});
+
+// 2. Create interview on behalf of customer
+app.post('/api/interviews', async (req, res) => {
+  const customer = await getCustomer(req.user.orgId);
+
+  const client = new BoooplyClient({
+    apiKey: customer.boooplyApiKey,
+    baseUrl: 'https://api.meetings.boooply.com',
+  });
+
+  const interview = await client.interviews.create({
+    type: 'ai',
+    jobRole: req.body.jobRole,
+    candidate: req.body.candidate,
+    skills: req.body.skills,
+  });
+
+  res.json(interview);
+});
+```
+
+## When to use platform keys vs org keys
+
+| | Organization Key | Platform Key |
+|---|---|---|
+| **Who** | Single company integrating Boooply | Platform serving multiple companies |
+| **Key management** | User copies key from Boooply dashboard | Your backend auto-provisions keys |
+| **User experience** | User pastes API key in your settings | User clicks "Connect" — no keys visible |
+| **Key format** | `bply_org_...` | `bply_platform_...` (master) → creates `bply_org_...` per customer |
+| **Where key lives** | Customer's `.env` or settings | Your platform's `.env` (master) + database (per-customer org keys) |
+| **Example** | A company builds their own Boooply integration | An ATS like TalentFlow offers Boooply to all its customers |

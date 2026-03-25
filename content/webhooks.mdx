@@ -26,59 +26,122 @@ Fired after transcription completes (Whisper for human/team, real-time for AI in
 ```json
 {
   "event": "interview.transcript",
-  "meetingCode": "Boooply-AI-1234567890",
-  "title": "Senior Frontend Engineer Interview",
-  "meetingType": "AI_ONLY",
-  "isTeamMeeting": false,
-  "candidateName": "Jane Doe",
-  "jobRole": "Senior Frontend Engineer",
-  "transcript": [
-    {
-      "speaker": "AI Interviewer",
-      "text": "Tell me about your experience with React.",
-      "startMs": 12400
-    },
-    {
-      "speaker": "Jane Doe",
-      "text": "I've been working with React for 5 years...",
-      "startMs": 15200,
-      "endMs": 28900
-    }
-  ],
-  "transcriptCount": 24,
-  "timestamp": "2026-03-21T18:30:00.000Z"
+  "data": {
+    "meetingCode": "Boooply-AI-1234567890",
+    "title": "Senior Frontend Engineer Interview",
+    "meetingType": "AI_ONLY",
+    "isTeamMeeting": false,
+    "candidateName": "Jane Doe",
+    "jobRole": "Senior Frontend Engineer",
+    "source": "Acme Corp",
+    "sourceId": "org_7234567890",
+    "sourcePlatform": "AI TalentFlow",
+    "transcript": [
+      {
+        "speaker": "AI Interviewer",
+        "text": "Tell me about your experience with React.",
+        "startMs": 12400
+      },
+      {
+        "speaker": "Jane Doe",
+        "text": "I've been working with React for 5 years...",
+        "startMs": 15200,
+        "endMs": 28900
+      }
+    ],
+    "transcriptCount": 24,
+    "timestamp": "2026-03-21T18:30:00.000Z"
+  }
 }
 ```
 
 > For human/team meetings, each transcript entry includes both `startMs` and `endMs`. For AI interviews, only `startMs` is available.
 
+### Source fields (Platform API)
+
+When interviews are created via a platform API key, all webhook payloads include source tracking fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `source` | `string \| null` | The ATS organization name that created this interview (e.g., "Acme Corp") |
+| `sourceId` | `string \| null` | The ATS organization's internal ID — use this to identify which of your customers the webhook belongs to |
+| `sourcePlatform` | `string \| null` | The platform name (e.g., "AI TalentFlow") — set when generating the platform key |
+
+> **For platform integrations:** Use `sourceId` to route webhooks to the correct organization in your system. This is the `organizationId` you passed when calling `createOrganizationApiKey()`. These fields are `null` for interviews created directly from the Boooply dashboard.
+
 ---
 
 ### `interview.evaluation`
 
-Fired after AI analysis completes. Includes the evaluation summary and top-level scores.
+Fired after AI analysis completes. Includes the **full evaluation** — scores, skills, strengths, weaknesses, red flags, questions asked, and recruiter recommendations.
 
 ```json
 {
   "event": "interview.evaluation",
-  "meetingCode": "Boooply-AI-1234567890",
-  "title": "Senior Frontend Engineer Interview",
-  "meetingType": "AI_ONLY",
-  "isTeamMeeting": false,
-  "candidateName": "Jane Doe",
-  "jobRole": "Senior Frontend Engineer",
-  "summary": "Jane demonstrated strong technical skills in React and TypeScript...",
-  "overallRating": 82,
-  "recommendation": "PASS",
-  "timestamp": "2026-03-21T18:35:00.000Z"
+  "data": {
+    "meetingCode": "Boooply-AI-1234567890",
+    "title": "Senior Frontend Engineer Interview",
+    "meetingType": "AI_ONLY",
+    "candidateName": "Jane Doe",
+    "jobRole": "Senior Frontend Engineer",
+    "source": "Acme Corp",
+    "sourceId": "org_7234567890",
+    "sourcePlatform": "AI TalentFlow",
+    "summary": "Jane demonstrated strong technical skills in React and TypeScript...",
+    "oneLineSummary": "Strong React skills but needs improvement in system design",
+    "overallRating": 3,
+    "recommendation": "PASS",
+    "confidenceLevel": "HIGH",
+    "scores": {
+      "overall": 72,
+      "communication": 80,
+      "technicalSkills": 70,
+      "problemSolving": 65,
+      "cultureFit": 85,
+      "experienceMatch": 70
+    },
+    "recruiterSummary": { "tldr": "Solid mid-level React developer", "quickDecision": "ADVANCE" },
+    "skillsAssessment": [
+      { "skill": "React", "rating": 4, "evidence": "Explained hooks and context API well" }
+    ],
+    "strengthsAndWeaknesses": {
+      "strengths": [{ "point": "Strong React fundamentals", "evidence": "..." }],
+      "weaknesses": [{ "point": "Limited system design", "evidence": "..." }]
+    },
+    "redFlags": [{ "flag": "Vague on past projects", "severity": "WARNING", "context": "..." }],
+    "positiveSignals": [{ "signal": "Enthusiastic about the role", "context": "..." }],
+    "sentimentAnalysis": { "enthusiasm": "HIGH", "authenticity": "GENUINE", "stressLevel": "LOW" },
+    "questionsAsked": [
+      { "topic": "Technical", "question": "How do you handle state?", "candidateAnswer": "...", "answerQuality": 4, "timestamp": "02:15" }
+    ],
+    "nextSteps": {
+      "recommendation": "Proceed to technical round",
+      "questionsToAsk": ["Describe a system you designed"],
+      "focusAreasForNextRound": ["System design", "TypeScript generics"]
+    },
+    "ratingsForRecruiters": { "technicalSkills": 70, "communication": 80, "cultureFit": 85, "overall": 72 },
+    "timestamp": "2026-03-21T18:35:00.000Z"
+  }
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `summary` | `string` | AI-generated evaluation summary |
-| `overallRating` | `number` | Overall score (0–100) |
-| `recommendation` | `string` | `STRONG_PASS`, `PASS`, `REVIEW`, `FAIL`, or `STRONG_FAIL` |
+| `overallRating` | `number` | 1–5 scale |
+| `recommendation` | `string` | `STRONG_PASS` \| `PASS` \| `REVIEW` \| `FAIL` \| `STRONG_FAIL` |
+| `scores` | `object` | Breakdown: `overall`, `communication`, `technicalSkills`, `problemSolving`, `cultureFit`, `experienceMatch` (0–100) |
+| `oneLineSummary` | `string` | One-line TLDR |
+| `recruiterSummary` | `object` | `tldr` + `quickDecision` (ADVANCE/HOLD/REJECT) |
+| `skillsAssessment` | `array` | Per-skill ratings with evidence |
+| `strengthsAndWeaknesses` | `object` | Strengths and weaknesses with evidence |
+| `redFlags` | `array` | Concerns with `severity` (CRITICAL/WARNING) and `context` |
+| `positiveSignals` | `array` | Positive indicators with context |
+| `questionsAsked` | `array` | Each question, answer, quality score (1–5), topic, timestamp |
+| `sentimentAnalysis` | `object` | Enthusiasm, authenticity, stress level |
+| `meetingStatistics` | `object` | Speaking time %, response times |
+| `nextSteps` | `object` | Follow-up questions and focus areas for next round |
+| `customQuestionResponses` | `array` | Responses to recruiter's custom questions |
+| `ratingsForRecruiters` | `object` | Formatted scores for ATS import |
 
 ---
 
@@ -89,25 +152,38 @@ Fired alongside `evaluation` — a lightweight payload with just the numerical s
 ```json
 {
   "event": "interview.scores",
-  "meetingCode": "Boooply-AI-1234567890",
-  "candidateName": "Jane Doe",
-  "jobRole": "Senior Frontend Engineer",
-  "overallRating": 82,
-  "recommendation": "PASS",
-  "communication": 85,
-  "technical": 78,
-  "cultureFit": 90,
-  "timestamp": "2026-03-21T18:35:00.000Z"
+  "data": {
+    "meetingCode": "Boooply-AI-1234567890",
+    "candidateName": "Jane Doe",
+    "jobRole": "Senior Frontend Engineer",
+    "source": "Acme Corp",
+    "sourceId": "org_7234567890",
+    "sourcePlatform": "AI TalentFlow",
+    "overallRating": 3,
+    "recommendation": "PASS",
+    "confidenceLevel": "HIGH",
+    "scores": {
+      "overall": 72,
+      "communication": 80,
+      "technicalSkills": 70,
+      "problemSolving": 65,
+      "cultureFit": 85,
+      "experienceMatch": 70
+    },
+    "ratingsForRecruiters": { "technicalSkills": 70, "communication": 80, "cultureFit": 85, "overall": 72 },
+    "oneLineSummary": "Strong React skills but needs improvement in system design",
+    "timestamp": "2026-03-21T18:35:00.000Z"
+  }
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `overallRating` | `number` | Overall score (0–100) |
-| `recommendation` | `string` | `STRONG_PASS`, `PASS`, `REVIEW`, `FAIL`, or `STRONG_FAIL` |
-| `communication` | `number` | Communication score (0–100) |
-| `technical` | `number` | Technical knowledge score (0–100) |
-| `cultureFit` | `number` | Culture fit score (0–100) |
+| `overallRating` | `number` | 1–5 scale |
+| `recommendation` | `string` | `STRONG_PASS` \| `PASS` \| `REVIEW` \| `FAIL` \| `STRONG_FAIL` |
+| `scores` | `object` | Full breakdown: `overall`, `communication`, `technicalSkills`, `problemSolving`, `cultureFit`, `experienceMatch` (0–100) |
+| `ratingsForRecruiters` | `object` | Formatted for ATS pipeline import |
+| `oneLineSummary` | `string` | One-line TLDR |
 
 ---
 
@@ -118,13 +194,18 @@ Fired when the video recording has been processed and uploaded. Includes two URL
 ```json
 {
   "event": "interview.recording",
-  "meetingCode": "Boooply-AI-1234567890",
-  "title": "Senior Frontend Engineer Interview",
-  "duration": 1234,
-  "format": "mp4",
-  "videoUrl": "https://s3.amazonaws.com/...?X-Amz-Expires=604800&...",
-  "videoApiUrl": "https://api.meetings.boooply.com/api/integration/interviews/Boooply-AI-1234567890/recording",
-  "timestamp": "2026-03-21T18:40:00.000Z"
+  "data": {
+    "meetingCode": "Boooply-AI-1234567890",
+    "title": "Senior Frontend Engineer Interview",
+    "source": "Acme Corp",
+    "sourceId": "org_7234567890",
+    "sourcePlatform": "AI TalentFlow",
+    "duration": 1234,
+    "format": "mp4",
+    "videoUrl": "https://s3.amazonaws.com/...?X-Amz-Expires=604800&...",
+    "videoApiUrl": "https://api.meetings.boooply.com/api/integration/interviews/Boooply-AI-1234567890/recording",
+    "timestamp": "2026-03-21T18:40:00.000Z"
+  }
 }
 ```
 
@@ -184,20 +265,21 @@ app.post('/webhooks/boooply', express.json(), (req, res) => {
     return res.status(401).send('Invalid signature');
   }
 
-  const event = req.headers['x-boooply-event'];
+  const { event, data } = req.body;
 
   switch (event) {
     case 'interview.evaluation':
-      console.log(`Score: ${req.body.overallRating}/100 — ${req.body.recommendation}`);
+      console.log(`Score: ${data.overallRating}/100 — ${data.recommendation}`);
+      console.log(`Organization: ${data.sourceId}`); // your org ID
       break;
     case 'interview.transcript':
-      console.log(`Transcript: ${req.body.transcriptCount} messages`);
+      console.log(`Transcript: ${data.transcriptCount} messages`);
       break;
     case 'interview.scores':
-      console.log(`Technical: ${req.body.technical}, Communication: ${req.body.communication}`);
+      console.log(`Technical: ${data.technical}, Communication: ${data.communication}`);
       break;
     case 'interview.recording':
-      console.log(`Recording: ${req.body.videoApiUrl}`);
+      console.log(`Recording: ${data.videoApiUrl}`);
       break;
   }
 
