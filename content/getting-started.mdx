@@ -8,12 +8,12 @@ npm install @boooply/ai-interviews-sdk
 
 ## Authentication
 
-All API requests require an API key. You can get your API key from the [Boooply dashboard](https://app.boooply.com/settings) or by contacting support.
+All API requests require an API key. You can get your API key from the [Boooply Integrations page](https://boooply.com/integrations) or by contacting support.
 
 ```bash
 # Store in your .env file
 BOOOPLY_API_KEY=bply_org_xxxxxxxxxxxxx
-BOOOPLY_BASE_URL=https://api.meetings.boooply.com
+BOOOPLY_BASE_URL=https://api.boooply.com
 ```
 
 > **Security:** Never expose your API key in client-side code. Always call the Boooply API from your backend.
@@ -33,7 +33,7 @@ const client = new BoooplyClient({
 ## Create your first interview
 
 ```javascript
-const interview = await client.interviews.create({
+const { meeting } = await client.interviews.create({
   type: 'ai',
   jobRole: 'Frontend Engineer',
   candidate: {
@@ -44,28 +44,37 @@ const interview = await client.interviews.create({
   durationMinutes: 20,
 });
 
-console.log('Interview created:', interview.meetingCode);
-console.log('Send this URL to the candidate:', interview.url);
+console.log('Interview created:', meeting.meetingCode);
+
+// Build the candidate's tokenized join URL (Boooply also emails this automatically)
+const candidate = meeting.participants.find(p => p.role === 'CANDIDATE');
+const joinUrl = `${meeting.url}?token=${candidate.joinToken}`;
+console.log('Candidate join URL:', joinUrl);
 ```
 
-The candidate opens the URL in their browser, and the AI interviewer takes over — asking questions, evaluating responses, and generating a detailed assessment.
+The candidate opens the URL in their browser, the camera comes on (required — can't be toggled off during the session), and the AI interviewer takes over — asking questions, evaluating responses, and generating a detailed assessment.
 
 ## Get results
 
-After the interview completes, retrieve the evaluation:
+After the interview completes, retrieve the evaluation. The analysis job runs asynchronously, so `evaluation` may be `null` until it finishes — subscribe to the `interview.evaluation` [webhook](/webhooks) to be notified instead of polling.
 
 ```javascript
-const evaluation = await client.interviews.getEvaluation(interview.meetingCode);
+const result = await client.interviews.getEvaluation(meeting.meetingCode);
 
-console.log('Score:', evaluation.overallScore);       // 0-100
-console.log('Recommendation:', evaluation.recommendation); // PASS | FAIL | REVIEW
-console.log('Communication:', evaluation.communication);
-console.log('Technical:', evaluation.technical);
+if (result.evaluation) {
+  console.log('Score:', result.evaluation.overallScore);          // 0-100
+  console.log('Recommendation:', result.evaluation.recommendation); // PASS | FAIL | REVIEW
+  console.log('Communication:', result.evaluation.communication);
+  console.log('Technical:', result.evaluation.technical);
+  console.log('Culture Fit:', result.evaluation.cultureFit);
+  console.log('Problem Solving:', result.evaluation.problemSolving);
+  console.log('Experience Match:', result.evaluation.experienceMatch);
+}
 ```
 
 ## Next steps
 
-- [SDK Reference](/docs/sdk/interviews) — Full API for creating and managing interviews
-- [API Reference](/docs/api/authentication) — REST API endpoints
-- [Guides](/docs/guides/ai-interview) — Step-by-step tutorials
-- [Webhooks](/docs/webhooks) — Real-time event notifications
+- [SDK Reference](/sdk/interviews) — Full API for creating and managing interviews
+- [API Reference](/api/authentication) — REST API endpoints
+- [Guides](/guides/ai-interview) — Step-by-step tutorials
+- [Webhooks](/webhooks) — Real-time event notifications

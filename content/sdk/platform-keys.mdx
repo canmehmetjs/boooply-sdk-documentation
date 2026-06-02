@@ -22,7 +22,7 @@ const { BoooplyClient } = require('@boooply/ai-interviews-sdk');
 // Called when a customer clicks "Connect Boooply" in your platform
 const result = await BoooplyClient.createOrganizationApiKey(
   {
-    baseUrl: 'https://api.meetings.boooply.com',
+    baseUrl: 'https://api.boooply.com',
     platformKey: process.env.BOOOPLY_PLATFORM_KEY,
   },
   {
@@ -71,7 +71,7 @@ After provisioning, create a `BoooplyClient` instance with the customer's org ke
 // For each customer, use their stored org key
 const client = new BoooplyClient({
   apiKey: customer.boooplyApiKey, // the key you stored from createOrganizationApiKey()
-  baseUrl: 'https://api.meetings.boooply.com',
+  baseUrl: 'https://api.boooply.com',
 });
 
 // Now all operations are scoped to that customer's organization
@@ -95,7 +95,7 @@ app.post('/api/connect-boooply', async (req, res) => {
 
   const result = await BoooplyClient.createOrganizationApiKey(
     {
-      baseUrl: 'https://api.meetings.boooply.com',
+      baseUrl: 'https://api.boooply.com',
       platformKey: process.env.BOOOPLY_PLATFORM_KEY,
     },
     {
@@ -117,7 +117,7 @@ app.post('/api/interviews', async (req, res) => {
 
   const client = new BoooplyClient({
     apiKey: customer.boooplyApiKey,
-    baseUrl: 'https://api.meetings.boooply.com',
+    baseUrl: 'https://api.boooply.com',
   });
 
   const interview = await client.interviews.create({

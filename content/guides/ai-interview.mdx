@@ -5,92 +5,102 @@ This guide walks through creating a fully automated AI interview — from setup 
 ## 1. Create the interview
 
 ```javascript
-const interview = await client.interviews.create({
+const { meeting } = await client.interviews.create({
   type: 'ai',
   jobRole: 'Senior Frontend Engineer',
   candidate: {
     name: 'Jane Doe',
     email: 'jane@example.com',
   },
-  // Optional: provide CV for smarter questions
+  // Optional: provide CV for smarter, personalized questions.
+  // Accepts plain text, markdown, or a structured parsed-CV JSON object.
   candidateCV: resumeText,
   // Optional: specify what to evaluate
   skills: ['React', 'TypeScript', 'System Design'],
   seniority: 'SENIOR',
   department: 'Engineering',
-  // Optional: set duration (default: 30 min)
+  // Optional: set duration (default: 30 min, min: 5)
   durationMinutes: 25,
   // Optional: let AI generate questions based on the role
   aiGenerate: true,
-  // Optional: add your own questions too
+  // Optional: add your own questions too. These are asked after the warm-up
+  // and take priority over AI-generated follow-ups.
   questions: [
     'Describe a complex React architecture you built',
     'How do you approach code reviews?',
   ],
+  // Optional: email the candidate an AI-generated feedback email after analysis
+  sendCandidateFeedback: true,
 });
 ```
 
-## 2. Send the join URL to the candidate
+## 2. Send the candidate their join link
+
+Boooply sends the invitation email automatically. If you want to surface the join URL in your own UI, build it from the candidate's participant entry:
 
 ```javascript
-// The candidate opens this URL in their browser
-const joinUrl = interview.url;
-// Example: https://meetings.boooply.com/join/Boooply-AI-1234567890
-
-// Send via your email system
-await sendEmail({
-  to: 'jane@example.com',
-  subject: 'Your AI Interview is Ready',
-  body: `Click here to start: ${joinUrl}`,
-});
+const candidate = meeting.participants.find(p => p.role === 'CANDIDATE');
+const joinUrl = `${meeting.url}?token=${candidate.joinToken}`;
+// Example: https://boooply.com/meeting/Boooply-AI-1234567890?token=abc123...
 ```
+
+`meeting.url` is the base URL without a token; the token is what authenticates the specific participant at join time.
 
 ## 3. What happens during the interview
 
-1. Candidate opens the URL and allows camera/microphone
-2. AI interviewer greets them and starts asking questions
-3. AI adapts follow-up questions based on responses
-4. Session is recorded (video + audio)
-5. Interview ends when time is up or candidate finishes
+1. Candidate opens the URL and grants camera + microphone permissions
+2. **The camera stays on for the entire session** — the toggle is disabled for AI interviews (camera is required for the recorded video)
+3. AI interviewer greets them and starts asking questions
+4. AI adapts follow-up questions based on responses, asks your custom questions, and manages time
+5. Session is recorded (video + audio)
+6. Interview ends when time is up, when the candidate signals they're done, or when the AI wraps up
+7. After the interview, the candidate sees an optional 5-star feedback form (Poor / Fair / Good / Great / Excellent)
 
 ## 4. Get the results
 
-After the interview completes, the AI automatically analyzes the conversation:
+After the interview completes, an analysis job runs asynchronously. Check for the evaluation:
 
 ```javascript
-// Check if evaluation is ready
-const details = await client.interviews.get(interview.meetingCode);
+const details = await client.interviews.get(meeting.meetingCode);
 
-if (details.meeting.counts.hasEvaluation) {
-  const evaluation = await client.interviews.getEvaluation(interview.meetingCode);
+// `evaluation` is null until analysis completes
+if (details.evaluation) {
+  const { evaluation } = await client.interviews.getEvaluation(meeting.meetingCode);
 
-  console.log('Recommendation:', evaluation.recommendation); // PASS | FAIL | REVIEW
-  console.log('Overall Score:', evaluation.overallScore);     // 0-100
+  console.log('Recommendation:', evaluation.recommendation);    // PASS | FAIL | REVIEW
+  console.log('Overall:', evaluation.overallScore);             // 0-100
   console.log('Communication:', evaluation.communication);
   console.log('Technical:', evaluation.technical);
   console.log('Culture Fit:', evaluation.cultureFit);
+  console.log('Problem Solving:', evaluation.problemSolving);
+  console.log('Experience Match:', evaluation.experienceMatch);
 }
 
 // Get the full transcript
-const { transcript } = await client.interviews.getTranscript(interview.meetingCode);
+const { transcript } = await client.interviews.getTranscript(meeting.meetingCode);
 ```
 
 ## 5. Or use webhooks
 
-Instead of polling, set up a webhook to receive results automatically:
+Instead of polling, register a webhook URL to receive results automatically:
 
-```javascript
-// Your webhook endpoint receives this payload:
+```json
 {
-  "event": "evaluation.completed",
+  "event": "interview.evaluation",
   "data": {
     "meetingCode": "Boooply-AI-1234567890",
-    "evaluation": {
-      "overallScore": 82,
-      "recommendation": "PASS"
+    "overallRating": 4,
+    "overallRecommendation": "PASS",
+    "scores": {
+      "overall": 82,
+      "communication": 85,
+      "technicalSkills": 78,
+      "cultureFit": 90,
+      "problemSolving": 80,
+      "experienceMatch": 85
     }
   }
 }
 ```
 
-See [Webhooks](/docs/webhooks) for setup instructions.
+See [Webhooks](/webhooks) for payload details and signing verification.

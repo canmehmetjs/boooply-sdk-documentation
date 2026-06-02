@@ -12,11 +12,16 @@ const navbar = (
   <Navbar
     logo={
       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <img src="/boooply_dark.svg" alt="Boooply" height={20} style={{ height: 20 }} />
+        <img
+          src="https://boooply-public-bucket.s3.eu-central-1.amazonaws.com/boooply-assets/logo/boooplyLogo.png"
+          alt="Boooply"
+          height={20}
+          style={{ height: 20 }}
+        />
         <span style={{ fontSize: 13, fontWeight: 500, opacity: 0.35 }}>Docs</span>
       </span>
     }
-    projectLink="https://github.com/55studio/boooply-ai-interviews-sdk"
+    projectLink="https://github.com/canmehmetjs/boooply-sdk-documentation"
   />
 )
 
@@ -39,9 +44,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Layout
           navbar={navbar}
           pageMap={await getPageMap()}
-          docsRepositoryBase="https://github.com/55studio/boooply-ai-interviews-sdk/tree/main/docs"
+          docsRepositoryBase="https://github.com/canmehmetjs/boooply-sdk-documentation/tree/main"
           footer={footer}
           sidebar={{ defaultMenuCollapseLevel: 1 }}
+          nextThemes={{ defaultTheme: 'dark' }}
         >
           {children}
         </Layout>

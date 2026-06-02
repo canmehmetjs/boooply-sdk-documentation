@@ -1,5 +1,93 @@
 # Changelog
 
+## May 2026 — Per-Position evaluation rubrics
+
+SDK package remains at `v2.4.0`. Backend + product behavior change; **no SDK code change required** — the new fields ride through the existing `getEvaluation()` response shape. MCP `get_evaluation` is unchanged code-wise and surfaces the new fields automatically.
+
+### Added
+- **Per-Position evaluation rubrics.** Each Position can now carry its own scoring rubric — a list of criteria, each with 1/3/5 calibration anchors and an optional `mustHave` flag — generated as a draft from the job description and edited by the recruiter before save. Rubrics are **snapshotted onto the Meeting at creation** (same freeze pattern as the agent prompt), so editing the Position's rubric never retroactively changes how a past or scheduled interview is scored.
+- **Per-criterion AI scoring** in `interviews.getEvaluation()` / MCP `get_evaluation`. When a meeting was scheduled against a Position with a rubric, the response carries a new `byCriterion` block alongside the existing five-category fields — `{ score: 1-5 | null, evidenceCount, evidenceQuotes, confidence, assessmentState, ratingLabel, rationale }` per criterion — plus `mustHavesMet`, `overallConfidence`, `aiRecommendation` (`STRONG_HIRE` | `HIRE` | `NO_HIRE` | `STRONG_NO_HIRE`), and the frozen `rubricSnapshot`. The legacy `communication` / `technical` / `cultureFit` / `problemSolving` / `experienceMatch` fields are always present and fall back to `overallScore` for rubric-scored interviews so existing consumers keep rendering.
+- **Forced recruiter recommendation.** Recruiters now finalize an interview with an explicit `STRONG_HIRE` | `HIRE` | `NO_HIRE` | `STRONG_NO_HIRE` plus a free-text rationale; the AI's tentative recommendation is shown alongside but never auto-submits. Surfaces as `meeting.evaluationRecommendation`, `evaluationRecommendationRationale`, `evaluationFinalizedBy`, `evaluationFinalizedAt` on the meeting object.
+- **Per-job candidate comparison view** on the Position page — one row per candidate who interviewed for the job, one column per criterion in the current rubric, with a "scored against earlier rubric" badge on rows whose snapshot drifted from the current rubric.
+
+### Notes
+- **No breaking changes.** Meetings without a Position rubric — and every meeting scheduled before this change — continue to receive the legacy five-category shape exactly as before; per-criterion fields are simply absent. Detect rubric mode by `evaluation.byCriterion != null`.
+- Rubric generation from the job description is plan-tier limited (Redis daily counter, mirrors the AI chat limit): free 3/day, starter 20/day, growth 50/day, scale 200/day. Manual rubric edits are unlimited.
+- The contract triangle (boooply-docs / boooply-mcp-server / boooply-ai-interviews-sdk) stays in sync automatically because the new fields are added to the existing `buildEvaluationView` normalizer — no MCP tool schema change, no SDK method change.
+
+---
+
+## May 2026 — Unified activity log
+
+Backend + product behavior only. **No SDK / public API / MCP change**: activity events are portal-internal and are not exposed via the integration API, SDK, or MCP tools.
+
+### Added
+- **New OWNER+ADMIN-only `/activity` page** consolidating operational mutations across the org — candidate created / CV uploaded / compensation or notice edited / pipeline stage moved / position created or status changed / interview created, rescheduled, cancelled or ended / report generated / event created — filterable by actor, entity type, action, and date.
+- **Per-entity Activity tab** on Person, Position, and Interview detail pages; inline Activity section on Event detail. Visible to anyone who can read the entity. For Person, compensation and notice rows are dropped entirely for `HIRING_MANAGER` and `INTERVIEWER` — same visibility model as the field values themselves.
+
+### Notes
+- `/settings/audit` is **unchanged** — it remains the OWNER-only governance log (role changes, API keys, webhooks, billing). The new `/activity` page is parallel to it, not a replacement.
+- Internal feature. Public REST endpoints, MCP tools, and the SDK are not affected.
+
+---
+
+## May 2026 — Candidate salary period & AI comp capture
+
+SDK package unchanged. Backend + product behavior only — **no SDK / public API / MCP change**: candidate compensation is portal-internal and is not exposed via the integration API, SDK, or MCP tools.
+
+### Added
+- Candidate salary now carries an explicit **period** (`ANNUAL`, `MONTHLY`, `WEEKLY`, `HOURLY`) so a bare amount + currency is unambiguous. Set in the add-candidate and candidate compensation dialogs.
+- **AI auto-capture of expected salary & notice period.** When a candidate explicitly states their expected pay or notice period during an AI interview (live) or in a 1-to-1 interview transcript (post-interview analysis), the candidate record is updated automatically. Writes are confidence-gated and **never overwrite a value a recruiter entered manually**; provenance (manual vs AI) is tracked internally.
+
+### Notes
+- Compensation (including the new period) remains **omitted server-side for read-only roles** (HIRING_MANAGER / INTERVIEWER) — unchanged visibility model. Notice period stays visible to all roles that can see the candidate.
+
+---
+
+## May 2026 — Resumable 1-to-1 & team meetings
+
+SDK package remains at `v2.4.0`. Backend + product behavior change; no SDK code change required.
+
+### Changed
+- **1-to-1 and team meetings are now resumable.** If the host steps away, closes the tab, or the candidate no-shows, the meeting is no longer permanently ended — it reverts to `SCHEDULED` so the host and a late candidate can rejoin the **same link**. Consumers reading meeting `status` (via MCP `list_interviews`/`get_interview` or the API) **must not treat a first `COMPLETED` as final for human/team meetings, and must not assume status only moves forward**. AI interviews are unchanged — one-shot, `COMPLETED` is terminal. See [Meeting status](/mcp#meeting-status).
+- **New `endReason` field** accompanies terminal/last transitions: `HOST_COMPLETED`, `NO_SHOW`, `AUTO_COMPLETED`, `EXPIRED`, `HOST_ENDED`. Absent while a meeting is still resumable.
+
+### Added
+- Host controls to explicitly **complete** or **mark no-show** a 1-to-1/team meeting, and an **OWNER/ADMIN (or meeting host) reopen** action to recover a meeting that ended early. A genuinely completed 1-to-1 (one with an evaluation) cannot be reopened.
+
+### Webhooks
+- A resumable close or a **no-show does not fire** `interview.evaluation` / `interview.scores` / `interview.transcript` / `interview.recording` — a no-show is not a completed interview and is not analyzed. These fire only on a genuine completion (host-complete or a substantive auto-complete), as before. (Billing is unchanged: usage is counted when an interview is *created*, not on completion — a no-show neither charges nor refunds.)
+
+---
+
+## April 2026 — Documentation & platform fixes
+
+SDK package remains at `v2.4.0`. This batch is docs, product, and backend-side changes.
+
+### Added
+- **`GET /api/integration/organization`** — return the organization metadata tied to the current API key.
+- **`POST /api/integration/interviews/:meetingCode/participants`** — add one or more participants to an existing interview; each new participant is issued their own `joinToken`.
+- **`interview.interviewer_evaluation` webhook** — fires after interviewer performance analysis completes (1-to-1 HUMAN interviews only). Includes `confidenceLevel`, per-section ratings with evidence, bias assessment, legal-risk detection.
+- **`confidenceLevel`** on interviewer evaluations — `HIGH | MEDIUM | LOW`. Sparse transcripts now return `LOW` confidence instead of confabulated ratings.
+- **JSON-structured CV input** — `candidateCV` now accepts a JSON-serialized parsed-CV object in addition to plain text / markdown. See [Upload Candidate CV](/guides/candidate-cv).
+
+### Changed
+- **UI rename** — "Human Interview" is now called **"1-to-1 Interview"** in the dashboard. SDK parameter `type: 'human'` is unchanged and continues to work.
+- **AI interview camera** — camera stays on for the entire AI interview session. The toggle is disabled in the in-call UI; the camera is also force-enabled at connect time.
+- **Candidate feedback modal** — the in-app 5-star rating label (Poor / Fair / Good / Great / Excellent) now renders above the stars with a reserved-height slot to prevent layout jump.
+- **Analysis calibration** — removed upward score floors in the worker. Scores now reflect the LLM's per-category judgement directly (previously coherent high scores were flattened to uniform 70-80 bands). Only the downward cap (`perceivedLevel < required` → max 55) remains as a safety net.
+- **Interviewer-evaluation prompt** — rewritten with rating anchors, evidence required per section, job-context calibration (level, skills, JD), transcript wrapped in `<TRANSCRIPT_UNTRUSTED>` fence against prompt injection, pre-computed talk-time injected as facts, legal-risk hard cap on `professionalConduct.rating`.
+- **Candidate-analysis prompt** — level-relative rating rubric and explicit worked examples; fixed a long-standing bug where `jobData.experienceLevel` was defaulting to `MID` regardless of the real role.
+- **`rawAnalysis.scores.*`** fields are now read directly into the evaluation view — previously `communication`, `technical`, and `cultureFit` all silently fell back to `overallScore`, producing identical numbers across the breakdown.
+- **Docs URL cleanup** — corrected all API base-URL examples to `https://api.boooply.com`, dropped the non-existent `api.meetings.` and `meetings.` subdomain variants that had crept into several examples.
+
+### Fixed
+- SDK docs response shapes — `interviews.create()` returns `{ success: true, meeting: {...} }`; `interviews.list()` returns `{ meetings, pagination: { page, limit, total, totalPages } }`. Prior docs showed incorrect field names.
+- `mapGenericParticipant` JSDoc — role enum corrected from `OBSERVER` to `PARTICIPANT` to match `types.js`.
+- `platform-keys` doc `baseUrl` examples — now `https://api.boooply.com`.
+
+---
+
 ## v2.2.0 — March 2026
 
 ### Added
@@ -9,7 +97,7 @@
 - **Company name** — `companyName` parameter for `interviews.create()` (useful for agencies)
 - **Available slots** — `availableSlots` parameter for `CANDIDATE_PICKS` scheduling mode (max 50 slots)
 - **Webhook docs rewrite** — Updated with real per-event payloads, all headers, Python verification example
-- **Email notifications** — Documented that Boooply sends invitation emails from `noreply@boooply.com`
+- **Email notifications** — Documented that Boooply sends invitation emails from `hello@boooply.com`
 
 ### Changed
 - `CANDIDATE_PICKS` scheduling mode restricted to AI and Human interviews only (not team meetings)

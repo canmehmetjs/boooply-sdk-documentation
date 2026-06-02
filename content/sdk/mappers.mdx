@@ -44,7 +44,7 @@ const participant = mapGenericParticipant({
   name: 'John Doe',
   email: 'john@example.com',
   externalUserId: '12345',
-  authProvider: 'YOUR_PLATFORM',
+  authProvider: 'NATIVE',   // TALENTFLOW | GOOGLE | MICROSOFT | GITHUB | NATIVE
   role: 'CANDIDATE',
 });
 ```
@@ -58,3 +58,13 @@ const participant = mapGenericParticipant({
 | `HOST` | Meeting organizer |
 | `CO_HOST` | Co-organizer |
 | `PARTICIPANT` | General participant (team meetings) |
+
+## Auth providers
+
+| Provider | When to use |
+|----------|-------------|
+| `TALENTFLOW` | Users coming from TalentFlow platform |
+| `GOOGLE` | Google OAuth sign-in |
+| `MICROSOFT` | Microsoft OAuth / Entra ID |
+| `GITHUB` | GitHub OAuth |
+| `NATIVE` | Any other identity provider you own — default for `mapGenericParticipant` integrations |

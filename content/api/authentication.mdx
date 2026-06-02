@@ -3,7 +3,7 @@
 All API requests require a Bearer token in the `Authorization` header.
 
 ```bash
-curl https://api.meetings.boooply.com/api/integration/interviews \
+curl https://api.boooply.com/api/integration/interviews \
   -H "Authorization: Bearer bply_org_xxxxxxxxxxxxx"
 ```
 
@@ -15,7 +15,7 @@ There are two integration approaches depending on your use case:
 
 Use this when **your company is integrating Boooply directly** — you manage your own API key and call the Boooply API from your backend.
 
-- Get your API key from the [Boooply dashboard](https://boooply.com) under **Integrations > REST API & SDK**
+- Get your API key from the [Boooply Integrations page](https://boooply.com/integrations) under **REST API & SDK**
 - Key format: `bply_org_xxxxxxxxxxxxx`
 - Scoped to your single organization
 - You write the code, you manage the key
@@ -43,7 +43,7 @@ BOOOPLY_PLATFORM_KEY=bply_platform_xxxxxxxxxxxxx
 // When a customer connects Boooply in your platform
 const result = await BoooplyClient.createOrganizationApiKey(
   {
-    baseUrl: 'https://api.meetings.boooply.com',
+    baseUrl: 'https://api.boooply.com',
     platformKey: process.env.BOOOPLY_PLATFORM_KEY,
   },
   {

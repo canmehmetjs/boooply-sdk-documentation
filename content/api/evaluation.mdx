@@ -12,31 +12,65 @@ Returns AI-generated evaluation scores and analysis for a completed interview.
 
 ```json
 {
-  "recommendation": "PASS",
-  "overallScore": 82,
-  "communication": 85,
-  "technical": 78,
-  "cultureFit": 90,
-  "questionEvaluations": [
-    {
-      "question": "Tell me about your React experience",
-      "score": 8,
-      "feedback": "Strong understanding of React hooks and state management"
-    }
-  ]
+  "success": true,
+  "evaluation": {
+    "recommendation": "PASS",
+    "overallScore": 82,
+    "communication": 85,
+    "technical": 78,
+    "cultureFit": 90,
+    "problemSolving": 80,
+    "experienceMatch": 85,
+    "questionEvaluations": [
+      {
+        "question": "Tell me about your React experience",
+        "score": 80,
+        "notes": "Strong understanding of React hooks and state management"
+      }
+    ]
+  },
+  "aiSummary": "One-paragraph narrative summary of the interview.",
+  "recommendations": {
+    "strengths": ["..."],
+    "improvements": ["..."],
+    "nextSteps": ["..."]
+  },
+  "meetingStatistics": {
+    "duration": 1523,
+    "turnCount": 42
+  },
+  "rawAnalysis": { /* Full analyzer output — see below */ },
+  "interviewerEvaluation": null
 }
 ```
 
-### Fields
+### Top-level fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `recommendation` | `string` | `PASS` \| `FAIL` \| `REVIEW` |
+| `evaluation` | `object \| null` | Candidate scores and recommendation. `null` if analysis hasn't completed yet. |
+| `aiSummary` | `string \| null` | Short narrative summary. |
+| `recommendations` | `object \| null` | Strengths, improvements, next steps. |
+| `meetingStatistics` | `object \| null` | Duration, turn count, etc. |
+| `rawAnalysis` | `object \| null` | Full analyzer output with per-category details, perceivedLevel, quickDecision, skillEvaluations, etc. Use for deep integrations. |
+| `interviewerEvaluation` | `object \| null` | Interviewer performance analysis. Only included for OWNER/ADMIN members and only for 1-to-1 HUMAN interviews. |
+
+### `evaluation` fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `recommendation` | `string` | `PASS` \| `FAIL` \| `REVIEW` — derived from `rawAnalysis.recruiterSummary.quickDecision` |
 | `overallScore` | `number` | 0-100 overall score |
 | `communication` | `number` | 0-100 communication score |
-| `technical` | `number` | 0-100 technical skills score |
+| `technical` | `number` | 0-100 technical skills score (mapped from `rawAnalysis.scores.technicalSkills`) |
 | `cultureFit` | `number` | 0-100 culture fit score |
-| `questionEvaluations` | `array` | Per-question scores and feedback |
+| `problemSolving` | `number` | 0-100 problem-solving score |
+| `experienceMatch` | `number` | 0-100 experience-level match score |
+| `questionEvaluations` | `array` | Per-custom-question results: `{ question, score (0-100), notes }` |
+
+> **Scales:** `evaluation.*` scores are all 0-100. `rawAnalysis.overallRating` is a 1-5 rating (5-star scale). Webhook payloads include both scales — see [Webhooks](/webhooks).
+
+> **Category parity:** If the analyzer didn't output a specific category score, that field falls back to `overallScore` rather than being `null`. You can tell a fallback happened by checking against `rawAnalysis.scores` directly.
 
 ## Trigger Analysis
 
@@ -44,4 +78,16 @@ Returns AI-generated evaluation scores and analysis for a completed interview.
 POST /api/integration/interviews/:meetingCode/analyze
 ```
 
-Re-runs AI analysis on a completed interview. Useful if you want to regenerate the evaluation.
+Re-runs AI analysis on a completed interview. Useful when you want to regenerate the evaluation after prompt/model changes, or to recover from a transient failure.
+
+### Response
+
+```json
+{
+  "success": true,
+  "queued": true,
+  "jobId": "135"
+}
+```
+
+The job runs asynchronously. Subscribe to the `interview.evaluation` webhook to be notified when the fresh analysis is ready, or poll `GET /evaluation`.

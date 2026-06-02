@@ -9,6 +9,7 @@ Boooply sends webhook events to your endpoint when key moments occur during the 
 | Transcript ready | `interview.transcript` | Full conversation transcript with speaker names and timestamps |
 | Evaluation complete | `interview.evaluation` | AI analysis with summary, scores, and recommendation |
 | Scores available | `interview.scores` | Candidate score breakdown (communication, technical, culture fit) |
+| Interviewer evaluation | `interview.interviewer_evaluation` | Interviewer performance analysis (1-to-1 HUMAN interviews only) |
 | Recording available | `interview.recording` | Video recording ready with download URLs |
 
 > **Note:** Events are prefixed with `interview.` in the webhook payload and headers. When configuring events in the dashboard, use the short key (e.g., `transcript`).
@@ -187,6 +188,85 @@ Fired alongside `evaluation` — a lightweight payload with just the numerical s
 
 ---
 
+### `interview.interviewer_evaluation`
+
+Fired after interviewer performance analysis completes. **1-to-1 HUMAN interviews only** — never sent for AI interviews or team meetings. Useful for tracking interviewer quality across your organization. Visible only to OWNER/ADMIN in the Boooply dashboard; never shown to the interviewer themselves.
+
+```json
+{
+  "event": "interview.interviewer_evaluation",
+  "data": {
+    "meetingCode": "Boooply-H-1234567890",
+    "title": "Product Manager Interview",
+    "meetingType": "HUMAN",
+    "candidateName": "Jane Doe",
+    "jobRole": "Product Manager",
+    "source": "Acme Corp",
+    "sourceId": "org_7234567890",
+    "sourcePlatform": "AI TalentFlow",
+    "participants": [ /* ... */ ],
+    "interviewerEvaluation": {
+      "overallRating": 4,
+      "overallSummary": "Strong interview with clear structure and good rapport...",
+      "confidenceLevel": "HIGH",
+      "confidenceReasoning": "42-min transcript, multiple probing questions observed",
+      "questionQuality": {
+        "rating": 4,
+        "openEndedCount": 6,
+        "closedEndedCount": 2,
+        "leadingQuestionsCount": 0,
+        "technicalDepth": "DEEP",
+        "topicCoverage": "COMPREHENSIVE",
+        "bestQuestion": "Walk me through a tradeoff decision on your last launch",
+        "worstQuestion": "Do you like working in teams? (closed yes/no)",
+        "evidence": "6 open-ended questions, probing follow-ups throughout"
+      },
+      "biasAssessment": {
+        "rating": 5,
+        "identifiedBiases": [],
+        "evidence": "No bias patterns detected across the transcript"
+      },
+      "timeManagement": {
+        "rating": 4,
+        "isInterviewerDominant": false,
+        "rushedTopics": [],
+        "missedTopics": []
+      },
+      "candidateExperience": {
+        "rating": 5,
+        "welcomingAndRapport": 5,
+        "clearExpectationSetting": 4,
+        "activeListening": 5,
+        "appropriateFollowUps": 5,
+        "closingAndNextSteps": 4
+      },
+      "professionalConduct": {
+        "rating": 5,
+        "inappropriateQuestions": [],
+        "legalRiskQuestions": []
+      },
+      "strengths": [ /* ... */ ],
+      "improvements": [ /* ... */ ],
+      "coachingRecommendations": [ /* ... */ ]
+    },
+    "analysisMeta": {
+      "durationMs": 8421
+    },
+    "timestamp": "2026-03-21T18:40:00.000Z"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `interviewerEvaluation.overallRating` | `number \| null` | 1–5 scale. Null when `confidenceLevel` is `LOW`. |
+| `interviewerEvaluation.confidenceLevel` | `string` | `HIGH` \| `MEDIUM` \| `LOW`. Use this to filter sparse-transcript evaluations. |
+| `interviewerEvaluation.biasAssessment.identifiedBiases` | `array` | Empty array when no bias is detected (not `null`, not a placeholder). |
+| `interviewerEvaluation.professionalConduct.legalRiskQuestions` | `array` | Any questions touching age, family, religion, health, origin. If non-empty, `professionalConduct.rating` is capped at 2. |
+| `analysisMeta.durationMs` | `number` | Wall-clock time (ms) the analysis run took. |
+
+---
+
 ### `interview.recording`
 
 Fired when the video recording has been processed and uploaded. Includes two URLs:
@@ -203,7 +283,7 @@ Fired when the video recording has been processed and uploaded. Includes two URL
     "duration": 1234,
     "format": "mp4",
     "videoUrl": "https://s3.amazonaws.com/...?X-Amz-Expires=604800&...",
-    "videoApiUrl": "https://api.meetings.boooply.com/api/integration/interviews/Boooply-AI-1234567890/recording",
+    "videoApiUrl": "https://api.boooply.com/api/integration/interviews/Boooply-AI-1234567890/recording",
     "timestamp": "2026-03-21T18:40:00.000Z"
   }
 }

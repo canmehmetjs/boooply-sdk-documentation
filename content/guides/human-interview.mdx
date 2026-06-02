@@ -1,11 +1,13 @@
-# Create a Human Interview
+# Create a 1-to-1 Interview
 
-Set up a video interview between a candidate and human interviewers, with AI-powered transcription and analysis.
+Set up a scheduled video interview between one candidate and one or more human interviewers, with AI-powered transcription, evaluation, and interviewer performance feedback.
+
+> Formerly called "Human Interview" in earlier versions of the product and SDK. The SDK's `type: 'human'` parameter is unchanged — only the UI label was updated.
 
 ## Create the interview
 
 ```javascript
-const interview = await client.interviews.create({
+const { meeting } = await client.interviews.create({
   type: 'human',
   jobRole: 'Product Manager',
   scheduledAt: '2026-04-01T14:00:00Z',
@@ -23,4 +25,41 @@ const interview = await client.interviews.create({
 });
 ```
 
-Each participant receives a unique join URL. The interview is automatically transcribed and analyzed after it ends.
+Each participant receives an invitation email with their own unique join URL. To build the per-participant join URL yourself:
+
+```javascript
+const candidate = meeting.participants.find(p => p.role === 'CANDIDATE');
+const candidateJoinUrl = `${meeting.url}?token=${candidate.joinToken}`;
+
+const interviewer = meeting.participants.find(p => p.email === 'bob@company.com');
+const interviewerJoinUrl = `${meeting.url}?token=${interviewer.joinToken}`;
+```
+
+## Scheduling modes
+
+Pass a `schedulingMode`:
+
+- **`FIXED`** (default when `scheduledAt` is set) — interview happens at the exact datetime you provide.
+- **`IMMEDIATE`** — participants can join right away; skip this for 1-to-1 interviews unless the candidate is already on the line.
+- **`CANDIDATE_PICKS`** — candidate receives a booking link and picks a slot from `availableSlots`. See [getAvailability](/sdk/interviews#interviews-getavailability-params) to pull interviewer availability from their connected Google Calendar.
+
+## After the interview
+
+Two separate analyses run automatically on completion:
+
+1. **Candidate evaluation** — scores and recommendation for the candidate (same shape as AI interviews; see [`getEvaluation`](/sdk/interviews#interviews-getevaluation-meetingcode)).
+2. **Interviewer performance evaluation** — analyzes the interviewer's question quality, bias, time management, and professional conduct. Visible only to OWNER/ADMIN members via [`getEvaluation`](/sdk/interviews#interviews-getevaluation-meetingcode)'s `interviewerEvaluation` field and via the `interview.interviewer_evaluation` webhook. The interviewer does not see their own performance review.
+
+```javascript
+const result = await client.interviews.getEvaluation(meeting.meetingCode);
+
+// Candidate side
+result.evaluation.recommendation;   // PASS | FAIL | REVIEW
+result.evaluation.overallScore;     // 0-100
+
+// Interviewer side (OWNER/ADMIN only)
+result.interviewerEvaluation?.overallRating;       // 1-5
+result.interviewerEvaluation?.confidenceLevel;     // HIGH | MEDIUM | LOW
+result.interviewerEvaluation?.biasAssessment;
+result.interviewerEvaluation?.professionalConduct; // legal-risk flags, etc.
+```

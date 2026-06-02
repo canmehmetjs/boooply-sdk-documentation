@@ -26,12 +26,15 @@ Create an AI interview, human interview, or team meeting.
 | `workSetup` | `string` | No | `REMOTE` \| `ONSITE` \| `HYBRID` |
 | `employmentType` | `string` | No | `FULL_TIME` \| `PART_TIME` \| `CONTRACT` |
 | `durationMinutes` | `number` | No | Duration (default: 30, min: 5) |
-| `scheduledAt` | `string` | No | ISO 8601 datetime |
+| `scheduledAt` | `string` | No | ISO 8601 datetime (required for `FIXED` mode) |
 | `schedulingMode` | `string` | No | `IMMEDIATE` \| `FIXED` \| `CANDIDATE_PICKS` |
+| `availableSlots` | `Array<{ start, end }>` | No | Time slots to offer the candidate for `CANDIDATE_PICKS` mode (ISO 8601, max 50) |
 | `questions` | `string[]` | No | Custom interview questions |
 | `aiGenerate` | `boolean` | No | Auto-generate questions with AI |
 | `evaluationFocus` | `string` | No | `knowledge` \| `balanced` \| `communication` \| `problem_solving` \| `culture` |
 | `sendCandidateFeedback` | `boolean` | No | Send AI-generated feedback email to candidate after evaluation |
+| `agenda` | `string[]` | No | Agenda items (team meetings only) |
+| `transcriptionEnabled` | `boolean` | No | Enable recording & post-meeting transcript for team meetings (default: `false`) |
 | `externalJobId` | `string` | No | External job/position ID from your ATS |
 
 ### Examples
@@ -92,13 +95,19 @@ const meeting = await client.interviews.create({
 
 ```json
 {
+  "success": true,
   "meeting": {
+    "id": "uuid-...",
     "meetingCode": "Boooply-AI-1234567890",
-    "url": "https://meetings.boooply.com/join/Boooply-AI-1234567890",
+    "url": "https://boooply.com/meeting/Boooply-AI-1234567890",
     "meetingType": "AI_ONLY",
+    "isTeamMeeting": false,
     "sessionStatus": "SCHEDULED",
+    "scheduledAt": "2026-04-01T14:00:00Z",
+    "durationMinutes": 30,
     "participants": [
       {
+        "id": "uuid-...",
         "name": "Jane Doe",
         "email": "jane@example.com",
         "role": "CANDIDATE",
@@ -107,6 +116,23 @@ const meeting = await client.interviews.create({
     ]
   }
 }
+```
+
+### Join URLs
+
+`meeting.url` is the **base** meeting URL (no token). Each participant also gets a unique `joinToken` — the actual per-participant join URL is:
+
+```
+{meeting.url}?token={participant.joinToken}
+```
+
+Boooply sends invitation emails automatically with each participant's token-attached join URL, so most integrations don't need to construct these themselves. If you want to surface the join URL in your own UI:
+
+```javascript
+const { meeting } = await client.interviews.create({ /* ... */ });
+
+const candidate = meeting.participants.find(p => p.role === 'CANDIDATE');
+const candidateJoinUrl = `${meeting.url}?token=${candidate.joinToken}`;
 ```
 
 ---
@@ -180,13 +206,15 @@ if (calendarConnected) {
 List interviews with optional filters.
 
 ```javascript
-const { interviews, pagination } = await client.interviews.list({
+const { meetings, pagination } = await client.interviews.list({
   status: 'COMPLETED',   // SCHEDULED | ACTIVE | COMPLETED | CANCELLED
   type: 'AI_ONLY',       // AI_ONLY | HUMAN
   search: 'frontend',    // Search by role, candidate, email
   page: 1,
   limit: 20,
 });
+
+// pagination: { page, limit, total, totalPages }
 ```
 
 ---
@@ -245,6 +273,15 @@ await client.interviews.reschedule('Boooply-AI-1234567890', {
 });
 ```
 
+The candidate, host, and any other participants receive a reschedule email
+with an ICS attachment that re-uses the original event UID and bumps
+`SEQUENCE`, so calendar clients (Google, Apple, Outlook) update the existing
+event in place rather than creating a duplicate. If you pass a `reason`, it
+is included in the email.
+
+Cannot reschedule an interview that is currently `ACTIVE`, already
+`COMPLETED`, or already `CANCELLED`.
+
 ---
 
 ## `interviews.cancel(meetingCode, reason?)`
@@ -254,6 +291,13 @@ Cancel an interview.
 ```javascript
 await client.interviews.cancel('Boooply-AI-1234567890', 'Position filled');
 ```
+
+The candidate, host, and any other participants receive a cancellation email
+with a `METHOD:CANCEL` ICS attachment so the event is automatically removed
+from their calendars. If you pass a `reason`, it is included in the email.
+
+Cannot cancel an interview that is currently `ACTIVE`, already `COMPLETED`, or
+already `CANCELLED`.
 
 ---
 

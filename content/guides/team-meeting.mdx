@@ -5,7 +5,7 @@ Internal team meetings with video recording, transcription, and AI-generated rec
 ## Create a Team Meeting
 
 ```javascript
-const meeting = await client.interviews.create({
+const { meeting } = await client.interviews.create({
   type: 'team',
   scheduledAt: '2026-04-01T10:00:00Z',
   durationMinutes: 60,
@@ -13,11 +13,20 @@ const meeting = await client.interviews.create({
     { name: 'Alice', email: 'alice@company.com', role: 'HOST' },
     { name: 'Bob', email: 'bob@company.com', role: 'PARTICIPANT' },
     { name: 'Carol', email: 'carol@company.com', role: 'PARTICIPANT' },
+    // External participants (non-team members) work too — just provide
+    // name + email. They'll join as PARTICIPANT, never as HOST.
+    { name: 'Dana Ng', email: 'dana@external.io', role: 'PARTICIPANT' },
   ],
   agenda: ['Q1 review', 'Roadmap planning', 'Hiring updates'],
   transcriptionEnabled: true,
 });
+
+// Each participant gets their own join URL:
+const alice = meeting.participants.find(p => p.role === 'HOST');
+const aliceJoinUrl = `${meeting.url}?token=${alice.joinToken}`;
 ```
+
+> **Dashboard UX:** When creating team meetings from the Boooply dashboard (rather than the API), you get a search-based team-member picker with a "make host" toggle and a separate form for external participants. The SDK accepts the same flat `participants` array regardless of how the meeting was created.
 
 ### Parameters
 
@@ -71,11 +80,22 @@ Shared notes, agenda state, and poll results are saved and visible on the meetin
 
 ```javascript
 // Get meeting details (includes recap, transcript count, video URL)
-const details = await client.interviews.get('Team-1234567890');
+const { meeting: details } = await client.interviews.get('Team-1234567890');
 
 // Get transcript
 const { transcript } = await client.interviews.getTranscript('Team-1234567890');
-// transcript: [{ speaker: 'Alice', content: 'Let's start...', startMs: 1000, endMs: 3500 }, ...]
+// transcript: [
+//   {
+//     id: 'uuid-...',
+//     speaker: 'Alice',
+//     role: 'PARTICIPANT',
+//     content: "Let's start with Q1 numbers...",
+//     startMs: 1000,
+//     endMs: 3500,
+//     confidence: 0.94
+//   },
+//   ...
+// ]
 ```
 
 The meeting detail page shows:

@@ -18,7 +18,7 @@ Add to your `claude_desktop_config.json`:
       "args": ["-y", "@boooply/mcp-server@latest"],
       "env": {
         "BOOOPLY_API_KEY": "bply_...",
-        "BOOOPLY_API_URL": "https://api.meetings.boooply.com"
+        "BOOOPLY_API_URL": "https://api.boooply.com"
       }
     }
   }
@@ -37,7 +37,7 @@ Add to your project's `.claude/settings.json` or global `~/.claude/settings.json
       "args": ["-y", "@boooply/mcp-server@latest"],
       "env": {
         "BOOOPLY_API_KEY": "bply_...",
-        "BOOOPLY_API_URL": "https://api.meetings.boooply.com"
+        "BOOOPLY_API_URL": "https://api.boooply.com"
       }
     }
   }
@@ -56,7 +56,7 @@ Add to your `.cursor/mcp.json`:
       "args": ["-y", "@boooply/mcp-server@latest"],
       "env": {
         "BOOOPLY_API_KEY": "bply_...",
-        "BOOOPLY_API_URL": "https://api.meetings.boooply.com"
+        "BOOOPLY_API_URL": "https://api.boooply.com"
       }
     }
   }
@@ -76,7 +76,7 @@ Add to your `.vscode/mcp.json`:
       "args": ["-y", "@boooply/mcp-server@latest"],
       "env": {
         "BOOOPLY_API_KEY": "bply_...",
-        "BOOOPLY_API_URL": "https://api.meetings.boooply.com"
+        "BOOOPLY_API_URL": "https://api.boooply.com"
       }
     }
   }
@@ -86,7 +86,7 @@ Add to your `.vscode/mcp.json`:
 ### SSE Mode (for web-based clients)
 
 ```bash
-BOOOPLY_API_KEY=bply_... BOOOPLY_API_URL=https://api.meetings.boooply.com npx -y @boooply/mcp-server@latest --sse
+BOOOPLY_API_KEY=bply_... BOOOPLY_API_URL=https://api.boooply.com npx -y @boooply/mcp-server@latest --sse
 ```
 
 ## Available Tools
@@ -141,6 +141,27 @@ focus on technical knowledge, 25 minutes, generate questions with AI"
 "Cancel interview Boooply-AI-9876543210 — position was filled"
 ```
 
+## Meeting status
+
+`list_interviews` and `get_interview` expose a `status` field
+(`SCHEDULED | ACTIVE | COMPLETED | CANCELLED | FAILED`).
+
+> **Status is not monotonic for 1-to-1 and team meetings.** A human meeting
+> (`type: human` or a team meeting) is **resumable**. If the host steps away,
+> closes the tab, or the candidate no-shows, an in-progress meeting reverts
+> from `ACTIVE`/`COMPLETED` **back to `SCHEDULED`** so the host and a late
+> candidate can rejoin the same link. It is only terminal when the host
+> explicitly completes it, marks it a no-show, or it hard-expires (24h past
+> its scheduled end). **Do not treat a first `COMPLETED` reading as final for
+> human/team meetings, and do not assume status only moves forward.** AI
+> interviews are one-shot and never revert — `COMPLETED` is terminal for them.
+
+A companion `endReason` field explains a terminal/last transition:
+`HOST_COMPLETED` (host ended it), `NO_SHOW` (candidate never joined),
+`AUTO_COMPLETED` (a substantive session ended without an explicit click),
+`EXPIRED` (hard-expired with nothing substantive), `HOST_ENDED`. It is absent
+while a meeting is still resumable.
+
 ## Scheduling Modes
 
 When creating interviews, you can specify how scheduling works:
@@ -155,4 +176,4 @@ For `CANDIDATE_PICKS`, use `get_availability` first to fetch the interviewer's o
 
 ## Emails
 
-When interviews are created, Boooply automatically sends invitation emails to all participants from `noreply@boooply.com`. Make sure candidates know to expect this.
+When interviews are created, Boooply automatically sends invitation emails to all participants from `hello@boooply.com`. Make sure candidates know to expect this.

@@ -7,7 +7,7 @@ POST /api/integration/interviews
 ```
 
 ```bash
-curl -X POST https://api.meetings.boooply.com/api/integration/interviews \
+curl -X POST https://api.boooply.com/api/integration/interviews \
   -H "Authorization: Bearer bply_..." \
   -H "Content-Type: application/json" \
   -d '{
@@ -50,13 +50,13 @@ curl -X POST https://api.meetings.boooply.com/api/integration/interviews \
 
 ### Emails
 
-When an interview is created, Boooply automatically sends invitation emails to all participants from `noreply@boooply.com`:
+When an interview is created, Boooply automatically sends invitation emails to all participants from `hello@boooply.com`:
 
 - **Candidates** receive a join link, or a booking link if `schedulingMode` is `CANDIDATE_PICKS`
 - **Interviewers/hosts** receive a separate join link with their token
 - If `sendCandidateFeedback` is `true`, the candidate receives an AI-generated feedback email after evaluation completes
 
-> **Important:** Make sure your candidates are aware they will receive emails from Boooply (`noreply@boooply.com`). Consider adding this to your hiring communications so invitation emails don't end up in spam.
+> **Important:** Make sure your candidates are aware they will receive emails from Boooply (`hello@boooply.com`). Consider adding this to your hiring communications so invitation emails don't end up in spam.
 
 ---
 
@@ -154,11 +154,20 @@ GET /api/integration/interviews?status=COMPLETED&limit=20
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `status` | `string` | `SCHEDULED \| ACTIVE \| COMPLETED \| CANCELLED` |
-| `type` | `string` | `AI_ONLY \| HUMAN` |
-| `search` | `string` | Search by role, name, email |
+| `status` | `string` | `SCHEDULED \| ACTIVE \| COMPLETED \| CANCELLED \| FAILED`. Single value, or comma-separated for multiple (e.g. `COMPLETED,CANCELLED`). |
+| `type` | `string` | `AI_ONLY \| HUMAN \| TEAM` |
+| `search` | `string` | Search by meeting code, candidate name, job role, or title |
+| `sourceId` | `string` | Filter by ATS source/integration id |
+| `dateField` | `string` | Which date `dateFrom`/`dateTo` apply to: `scheduled \| created` (default `created`) |
+| `dateFrom` | `string` | Range start, ISO 8601 |
+| `dateTo` | `string` | Range end, ISO 8601 |
+| `scoreMin` | `number` | Minimum AI overall score, `0`–`100` (unscored interviews excluded when set) |
+| `scoreMax` | `number` | Maximum AI overall score, `0`–`100` |
 | `page` | `number` | Page number (default: 1) |
 | `limit` | `number` | Results per page (default: 20, max: 100) |
+
+Each interview in the response includes `overallScore` — the `0`–`100` AI
+overall score, or `null` if not yet evaluated.
 
 ---
 
@@ -180,6 +189,13 @@ PATCH /api/integration/interviews/:meetingCode/cancel
 { "reason": "Position filled" }
 ```
 
+Sends a cancellation email with a `METHOD:CANCEL` ICS attachment to the
+candidate, host, and any additional participants so the event is removed
+from their calendars. The optional `reason` is included in the email.
+
+Returns `400` if the interview is `ACTIVE`, `COMPLETED`, or already
+`CANCELLED`.
+
 ---
 
 ## Reschedule Interview
@@ -195,6 +211,14 @@ PATCH /api/integration/interviews/:meetingCode/reschedule
   "reason": "Candidate requested"
 }
 ```
+
+Sends a reschedule email with an ICS attachment that re-uses the original
+event UID and bumps `SEQUENCE`, so the candidate's, host's, and other
+participants' calendars update the existing event in place. The optional
+`reason` is included in the email.
+
+Returns `400` if the interview is `ACTIVE`, `COMPLETED`, or already
+`CANCELLED`.
 
 ---
 
@@ -247,6 +271,53 @@ Returns `{ success: true, message: "Participant Jane Doe removed" }`.
 
 ---
 
+## Add Participants
+
+```
+POST /api/integration/interviews/:meetingCode/participants
+```
+
+Add one or more participants to an existing interview. Useful when you need to bring in a second interviewer after the interview was created, or switch out who's taking the call.
+
+```json
+{
+  "participants": [
+    { "name": "Bob Smith", "email": "bob@company.com", "role": "INTERVIEWER" }
+  ]
+}
+```
+
+Each newly-added participant gets their own `joinToken` in the response, so you can send them their personal join link.
+
+---
+
+## Get Organization
+
+```
+GET /api/integration/organization
+```
+
+Returns the organization metadata associated with the API key.
+
+### Response
+
+```json
+{
+  "success": true,
+  "organization": {
+    "id": "uuid-...",
+    "name": "Acme Corp",
+    "slug": "acme-corp",
+    "externalOrgId": "your-platform-org-id",
+    "plan": "STARTER"
+  }
+}
+```
+
+Use this to verify which organization an API key belongs to — useful when your platform swaps keys between tenants and you want to sanity-check the current context.
+
+---
+
 ## Get Recording
 
 ```
@@ -263,7 +334,7 @@ GET /api/integration/interviews/:meetingCode/recording
     "format": "mp4",
     "createdAt": "2026-04-01T14:30:00Z",
     "videoUrl": "https://s3.amazonaws.com/...?X-Amz-Expires=604800",
-    "videoApiUrl": "https://api.meetings.boooply.com/api/integration/interviews/Boooply-AI-123/recording"
+    "videoApiUrl": "https://api.boooply.com/api/integration/interviews/Boooply-AI-123/recording"
   }
 }
 ```

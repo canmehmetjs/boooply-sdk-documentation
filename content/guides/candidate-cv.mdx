@@ -37,13 +37,54 @@ const fs = require('fs');
 const pdfBuffer = fs.readFileSync('resume.pdf');
 const { text } = await pdfParse(pdfBuffer);
 
-const interview = await client.interviews.create({
+await client.interviews.create({
   type: 'ai',
   jobRole: 'Frontend Engineer',
   candidate: { name: 'Jane', email: 'jane@example.com' },
   candidateCV: text,
 });
 ```
+
+## Pass a structured parsed-CV JSON object
+
+If your ATS already stores structured CV data (experience entries, skills array, education blocks), you can pass it as a JSON-serialized string. Boooply detects JSON and converts it to markdown internally so the AI can reason about it as prose, while recruiters see a nicely rendered version in the dashboard.
+
+```javascript
+const parsedCV = {
+  summary: 'Senior Backend Engineer with 5 years of experience...',
+  experience: [
+    {
+      company: 'TechCorp',
+      title: 'Senior Backend Engineer',
+      startDate: '2021-03',
+      endDate: 'Present',
+      bullets: [
+        'Led migration from monolith to event-driven architecture',
+        'Managed team of 4 engineers',
+      ],
+    },
+  ],
+  skills: ['Node.js', 'TypeScript', 'PostgreSQL', 'Redis', 'AWS', 'Docker'],
+  education: [
+    { school: 'MIT', degree: 'BS Computer Science', year: 2019 },
+  ],
+};
+
+await client.interviews.create({
+  type: 'ai',
+  jobRole: 'Backend Engineer',
+  candidate: { name: 'Jane', email: 'jane@example.com' },
+  candidateCV: JSON.stringify(parsedCV),
+});
+```
+
+Accepted `candidateCV` input formats (all produce the same downstream behavior):
+
+| Input | Treatment |
+|-------|-----------|
+| Plain text | Passed to the analyzer as-is |
+| Markdown | Rendered as markdown in the dashboard |
+| JSON string (parsed-CV shape) | Detected and converted to markdown for analyzer + display |
 
 ## What the AI does with the CV
 
