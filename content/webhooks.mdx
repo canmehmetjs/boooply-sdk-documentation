@@ -121,6 +121,13 @@ Fired after AI analysis completes. Includes the **full evaluation** — scores, 
       "focusAreasForNextRound": ["System design", "TypeScript generics"]
     },
     "ratingsForRecruiters": { "technicalSkills": 70, "communication": 80, "cultureFit": 85, "overall": 72 },
+    "speakingTimes": {
+      "candidatePercent": 76,
+      "interviewerPercent": 24,
+      "candidateSeconds": 574,
+      "interviewerSeconds": 177,
+      "totalDurationSeconds": 865
+    },
     "timestamp": "2026-03-21T18:35:00.000Z"
   }
 }
@@ -130,7 +137,9 @@ Fired after AI analysis completes. Includes the **full evaluation** — scores, 
 |-------|------|-------------|
 | `overallRating` | `number` | 1–5 scale |
 | `recommendation` | `string` | `STRONG_PASS` \| `PASS` \| `REVIEW` \| `FAIL` \| `STRONG_FAIL` |
-| `scores` | `object` | Breakdown: `overall`, `communication`, `technicalSkills`, `problemSolving`, `cultureFit`, `experienceMatch` (0–100) |
+| `scoreScale` | `string \| null` | Which scale the `scores` block below uses. `"1-5"` for interviews analyzed since the 1-5 switch, `null` for older ones which are `0`–`100`. Read this instead of guessing from the size of the number |
+| `overallScoreNormalized` | `number \| null` | The overall score as `0`–`100` in **both** eras. Use this for threshold rules so they keep working across the switch |
+| `scores` | `object` | Breakdown: `overall`, `communication`, `technicalSkills`, `problemSolving`, `cultureFit`, `experienceMatch`, on the scale named by `scoreScale` |
 | `oneLineSummary` | `string` | One-line TLDR |
 | `recruiterSummary` | `object` | `tldr` + `quickDecision` (ADVANCE/HOLD/REJECT) |
 | `skillsAssessment` | `array` | Per-skill ratings with evidence |
@@ -140,6 +149,7 @@ Fired after AI analysis completes. Includes the **full evaluation** — scores, 
 | `questionsAsked` | `array` | Each question, answer, quality score (1–5), topic, timestamp |
 | `sentimentAnalysis` | `object` | Enthusiasm, authenticity, stress level |
 | `meetingStatistics` | `object` | Speaking time %, response times |
+| `speakingTimes` | `object \| null` | Measured from the call audio, not estimated by the AI. `candidatePercent` and `interviewerPercent` are shares of the **speech** (they add up to 100, silence excluded); `candidateSeconds` and `interviewerSeconds` are the time each side spoke; `totalDurationSeconds` is the call length. `null` when no speech was recorded (for example 1-to-1 and team meetings). Since October 2026 each person's time is counted once, even where the recorded pieces overlapped. |
 | `nextSteps` | `object` | Follow-up questions and focus areas for next round |
 | `customQuestionResponses` | `array` | Responses to recruiter's custom questions |
 | `ratingsForRecruiters` | `object` | Formatted scores for ATS import |
@@ -182,7 +192,9 @@ Fired alongside `evaluation` — a lightweight payload with just the numerical s
 |-------|------|-------------|
 | `overallRating` | `number` | 1–5 scale |
 | `recommendation` | `string` | `STRONG_PASS` \| `PASS` \| `REVIEW` \| `FAIL` \| `STRONG_FAIL` |
-| `scores` | `object` | Full breakdown: `overall`, `communication`, `technicalSkills`, `problemSolving`, `cultureFit`, `experienceMatch` (0–100) |
+| `scoreScale` | `string \| null` | Which scale `scores` uses: `"1-5"` since the switch, `null` for older `0`–`100` interviews |
+| `overallScoreNormalized` | `number \| null` | Overall score as `0`–`100` in both eras, for threshold rules |
+| `scores` | `object` | Full breakdown: `overall`, `communication`, `technicalSkills`, `problemSolving`, `cultureFit`, `experienceMatch`, on the scale named by `scoreScale` |
 | `ratingsForRecruiters` | `object` | Formatted for ATS pipeline import |
 | `oneLineSummary` | `string` | One-line TLDR |
 
@@ -282,6 +294,7 @@ Fired when the video recording has been processed and uploaded. Includes two URL
     "sourcePlatform": "AI TalentFlow",
     "duration": 1234,
     "format": "mp4",
+    "recordingStorage": { "status": "HOT", "restoreExpiresAt": null },
     "videoUrl": "https://s3.amazonaws.com/...?X-Amz-Expires=604800&...",
     "videoApiUrl": "https://api.boooply.com/api/integration/interviews/Boooply-AI-1234567890/recording",
     "timestamp": "2026-03-21T18:40:00.000Z"
@@ -293,25 +306,54 @@ Fired when the video recording has been processed and uploaded. Includes two URL
 |-------|------|-------------|
 | `duration` | `number` | Recording duration in seconds |
 | `format` | `string` | File format (e.g., `mp4`) |
-| `videoUrl` | `string` | Pre-signed S3 URL — **expires after 7 days** |
+| `recordingStorage` | `object` | Cold-storage state: `status` is `HOT`, `ARCHIVING`, `ARCHIVED`, `RESTORING`, or `RESTORED`; `restoreExpiresAt` is set while a restored copy is available |
+| `videoUrl` | `string \| null` | Pre-signed S3 URL — **expires after 7 days**. `null` while the recording is archived |
 | `videoApiUrl` | `string` | Stable API endpoint — generates a fresh download URL on each request (requires API key auth) |
 
 > **Tip:** Store the `videoApiUrl` in your system. It always works and generates a fresh pre-signed URL on each request, while `videoUrl` expires after 7 days.
+
+> **Archived recordings:** organizations can move old recording media to cold storage. While `recordingStorage.status` is not `HOT` or `RESTORED`, `videoUrl` is `null` and a previously issued pre-signed URL stops working even if its 7 days have not passed. Keep polling `videoApiUrl` — it reports the storage state and returns a fresh URL once the recording is restored.
+
+---
+
+### `interview.booked`
+
+Fired when a candidate books a slot on a booking link. It is sent to a booking webhook URL that Boooply sets up for your workspace on request, not to the dashboard webhook URL, and it is not switched on or off by the dashboard event toggles.
+
+Unlike the events above, the body is **not** wrapped in `{ event, data }`. The event name is in the `X-Boooply-Event` header.
+
+```json
+{
+  "meetingCode": "Boooply-AI-1234567890",
+  "meetingId": "cm3x0abc...",
+  "meetingType": "AI_ONLY",
+  "jobRole": "Senior Frontend Engineer",
+  "candidateEmail": "jane@example.com",
+  "candidateName": "Jane Doe",
+  "scheduledAt": "2026-11-02T10:00:00.000Z",
+  "duration": 45,
+  "candidateTimezone": "Europe/Belgrade"
+}
+```
+
+**Authentication:** `interview.booked` carries **no `Authorization` header**. When your workspace has a webhook secret, the body is signed in `X-Boooply-Signature` with that secret, exactly like the other events. Verify it with the code under [Verifying signatures](#verifying-signatures). Without a webhook secret the request is unsigned, so create one in the [dashboard](/integrations) before you trust this event.
+
+> **Changed October 2026:** this event used to send your workspace API key as `Authorization: Bearer`. It no longer does. If your receiver checked that header, switch to checking `X-Boooply-Signature`.
 
 ---
 
 ## Headers
 
-Every webhook request includes these headers:
+Webhook requests include these headers:
 
 | Header | Description | Example |
 |--------|-------------|---------|
 | `Content-Type` | Always JSON | `application/json` |
-| `X-Boooply-Signature` | HMAC-SHA256 signature of the payload | `a1b2c3d4...` |
+| `X-Boooply-Signature` | HMAC-SHA256 signature of the payload. Sent when your workspace has a webhook secret | `a1b2c3d4...` |
 | `X-Boooply-Event` | Event type | `interview.evaluation` |
 | `X-Boooply-Platform` | Platform identifier | `custom` |
 | `X-Boooply-Meeting-Id` | Meeting code for this event | `Boooply-AI-1234567890` |
-| `Authorization` | Bearer token (your webhook secret) | `Bearer whsec_...` |
+| `Authorization` | Bearer token (your webhook secret). **Not sent** on `interview.booked`, which you verify by signature only | `Bearer whsec_...` |
 
 ---
 
@@ -349,7 +391,7 @@ app.post('/webhooks/boooply', express.json(), (req, res) => {
 
   switch (event) {
     case 'interview.evaluation':
-      console.log(`Score: ${data.overallRating}/100 — ${data.recommendation}`);
+      console.log(`Score: ${data.overallRating}/5 — ${data.recommendation}`);
       console.log(`Organization: ${data.sourceId}`); // your org ID
       break;
     case 'interview.transcript':

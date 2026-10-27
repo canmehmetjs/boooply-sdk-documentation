@@ -5,5 +5,7 @@ export default {
   'candidate-cv': 'Upload Candidate CV',
   'custom-questions': 'Custom Questions',
   'candidate-feedback': 'Candidate Feedback',
+  'team-performance': 'Team Performance',
+  slack: 'Slack',
   'billing-and-credits': 'Billing & Credits',
 }

@@ -42,7 +42,6 @@ curl -X POST https://api.boooply.com/api/integration/interviews \
 | `category` | `string` | No | `SCREENING` \| `TECHNICAL` \| `BEHAVIORAL` \| `ASSIGNMENT` \| `CULTURAL` \| `CASE_STUDY` \| `PANEL` \| `FINAL` |
 | `stage` | `string` | No | Free-form stage label (e.g., "Round 1", "Final Interview") |
 | `companyName` | `string` | No | Company name (defaults to org name) |
-| `evaluationFocus` | `string` | No | `knowledge` \| `balanced` \| `communication` \| `problem_solving` \| `culture` |
 | `sendCandidateFeedback` | `boolean` | No | Send feedback email to candidate |
 | `externalJobId` | `string` | No | External ATS job ID |
 | `agenda` | `string[]` | No | Agenda items (team meetings only) |
@@ -62,7 +61,7 @@ When an interview is created, Boooply automatically sends invitation emails to a
 
 ## Get Interviewer Availability
 
-Fetch available time slots from a team member's Google Calendar connected in Boooply.
+Fetch available time slots from a team member's calendar (Google Calendar or Outlook) connected in Boooply. When both are connected, busy in either one counts as busy.
 
 ```
 GET /api/integration/availability?email=bob@company.com&duration=30&days=14
@@ -89,18 +88,21 @@ GET /api/integration/availability?email=bob@company.com&duration=30&days=14
     { "start": "2026-04-01T09:00:00Z", "end": "2026-04-01T09:30:00Z" },
     { "start": "2026-04-01T09:30:00Z", "end": "2026-04-01T10:00:00Z" }
   ],
-  "total": 42
+  "total": 42,
+  "providers": ["GOOGLE", "MICROSOFT"]
 }
 ```
 
-If the user hasn't connected their Google Calendar:
+`providers` lists the calendars the slots were computed from (`GOOGLE`, `MICROSOFT`). It is optional: older responses do not have it.
+
+If the user hasn't connected a calendar:
 
 ```json
 {
   "success": true,
   "calendarConnected": false,
   "slots": [],
-  "message": "This user has not connected their Google Calendar in Boooply. You can provide availableSlots directly when creating the interview."
+  "message": "This user has not connected a Google or Microsoft calendar in Boooply. You can provide availableSlots directly when creating the interview."
 }
 ```
 
@@ -110,7 +112,7 @@ If the user hasn't connected their Google Calendar:
 
 ## Get Busy Blocks
 
-Fetch raw busy time blocks from a team member's Google Calendar. Use this if you want to compute availability with your own rules instead of using the pre-computed slots from the availability endpoint.
+Fetch raw busy time blocks from a team member's calendar (Google Calendar or Outlook). Use this if you want to compute availability with your own rules instead of using the pre-computed slots from the availability endpoint.
 
 ```
 GET /api/integration/busy-blocks?email=bob@company.com&days=14
@@ -136,7 +138,8 @@ GET /api/integration/busy-blocks?email=bob@company.com&days=14
     { "start": "2026-04-01T09:00:00Z", "end": "2026-04-01T10:00:00Z" },
     { "start": "2026-04-01T13:00:00Z", "end": "2026-04-01T14:30:00Z" }
   ],
-  "total": 18
+  "total": 18,
+  "providers": ["MICROSOFT"]
 }
 ```
 
@@ -166,8 +169,15 @@ GET /api/integration/interviews?status=COMPLETED&limit=20
 | `page` | `number` | Page number (default: 1) |
 | `limit` | `number` | Results per page (default: 20, max: 100) |
 
-Each interview in the response includes `overallScore` — the `0`–`100` AI
-overall score, or `null` if not yet evaluated.
+Each interview in the response includes `overallScore` — the normalized
+`0`–`100` AI overall score, or `null` if not yet evaluated — alongside
+`overallDisplay`, the same score as the `1`–`5` number shown in Boooply, and
+`scoreScale` (`"1-5"`, or `null` for interviews analyzed before the 1-5 switch).
+Filter and sort on `overallScore`; show `overallDisplay` to people.
+
+> **Careful with `scoreMin` / `scoreMax`:** they are on the `0`–`100` scale, not
+> `1`–`5`. To find candidates at 4 out of 5 or better, pass `scoreMin=80`.
+> Passing `scoreMin=4` matches almost everything.
 
 ---
 
@@ -333,6 +343,7 @@ GET /api/integration/interviews/:meetingCode/recording
     "duration": 1234,
     "format": "mp4",
     "createdAt": "2026-04-01T14:30:00Z",
+    "recordingStorage": { "status": "HOT", "restoreExpiresAt": null },
     "videoUrl": "https://s3.amazonaws.com/...?X-Amz-Expires=604800",
     "videoApiUrl": "https://api.boooply.com/api/integration/interviews/Boooply-AI-123/recording"
   }
@@ -342,3 +353,5 @@ GET /api/integration/interviews/:meetingCode/recording
 If no recording exists: `{ "success": true, "recording": null, "message": "No recording available" }`.
 
 > **Tip:** Store `videoApiUrl` — it generates a fresh pre-signed URL on each request. The `videoUrl` expires after 7 days.
+
+> **Archived recordings:** organizations can move old recording media to cold storage. While `recordingStorage.status` is not `HOT` or `RESTORED`, `videoUrl` is `null` (no pre-signed URL is issued). Once someone restores the recording in the portal, this endpoint returns a working URL again.

@@ -1,0 +1,79 @@
+# Team Performance
+
+A monthly view of how each member of your team works, built only from records that already exist in Boooply: interviews, evaluations, stage moves, assignments and the activity log.
+
+Every number opens the exact records behind it. There is never a number without proof.
+
+**This feature is off by default.** Nothing is measured about anyone until an owner or admin turns it on.
+
+## Turning it on
+
+**Settings → Team performance** (owners and admins).
+
+The page explains each setting in plain language and carries two things worth reading before you switch it on: how the system works, and exactly what gets measured about each person.
+
+You also set four thresholds there:
+
+| Setting | What it means | Default |
+|---|---|---|
+| Stale after | An owned, active candidate nobody has touched for this long counts as stale | 10 days |
+| Decision window | How long a candidate has to move forward or be rejected after an interview | 14 days |
+| Short interview | A completed 1-to-1 shorter than this counts as a short interview | 15 minutes |
+| Personal pages | Whether members can open their own page | On |
+
+The first report covers the first **whole** calendar month after you switch it on. Months before that are never computed — the system does not guess at history it did not measure.
+
+## What gets measured
+
+Four groups, sixteen measures.
+
+**Speed** — time from an evaluation being ready to a confirmed decision, whether the evaluation was opened before deciding, how quickly owned candidates move after an interview, follow-up discipline, and stale candidates.
+
+**Volume** — interviews scheduled and conducted (with total minutes), candidates added, stage moves, hires, and the average interview score of candidates that person added.
+
+**Judgment** — how far someone's grades sit from the AI suggestion on the same form, how strict they are compared with teammates, how many of their candidates moved forward, and how many survived further down the process.
+
+**Conduct and experience** — the AI's review of each interview, talk ratio, candidate ratings and their comments verbatim, reliability (cancellations, reschedules, no-shows, lateness), and interview depth.
+
+## The fairness rules
+
+These are not settings. They are fixed, and they apply to everyone.
+
+- **Small samples stay hidden.** Below 5 data points a measure shows "Not enough data (n = 3 of 5)" — never a number, never zero. One bad week cannot paint a false picture.
+- **AI ratings are never the main evidence.** Every AI-derived figure is labelled a coaching signal.
+- **Months are frozen.** On the 1st, last month is computed once and locked. Nobody can quietly change a past report. The single exception is downstream survival, which keeps collecting outcomes for 60 days, says *provisional* until then, and finalizes once.
+- **Context travels with the number.** Pass-through shows the seniority mix beside it, because interviewing only senior roles naturally lowers it.
+- **Nothing outside recruiting records is measured.** No screen tracking, no message reading, no working-hours monitoring.
+- **This is decision support.** It is not an automated decision system; anything serious requires human review of the underlying records.
+
+## Who sees what
+
+| | Owner / Admin | Everyone else |
+|---|---|---|
+| The whole team, with comparisons | Yes | No |
+| Their own page, without comparisons | Yes | Yes, while personal pages are on |
+| The monthly PDF | Generate and download | No |
+
+Members reach their own page from **My performance** in the profile menu. It opens with "What to work on" — the recurring suggestions from the AI's reviews of their interviews. The rating is the signal; the suggestions are what they get back.
+
+External interviewers (people without a Boooply account) appear in a separate section for completeness and are never ranked alongside staff.
+
+## The monthly PDF
+
+When a month freezes, the report is generated automatically and owners and admins get a notification. You can also generate it any time from **Reports**.
+
+It contains the cover (organization, month, frozen or preview, methodology version), an organization summary with the fairness guards spelled out, one section per member with their receipts, the external interviewers, and the full methodology as an appendix — the same text everyone can read in the app.
+
+## Candidate ownership
+
+Candidates can have an owner, set from the pipeline board, the list and table views, or in bulk. Scheduling a 1-to-1 interview makes the scheduler the owner if nobody owns that candidate yet.
+
+Ownership is accountability metadata: it decides who a candidate's responsiveness and staleness count for. It does **not** change who can see or edit anything.
+
+Candidates with no owner are counted and shown on the roster, so the numbers cannot be improved by removing an assignee.
+
+## Limits worth knowing
+
+- **Follow-up discipline is not measured yet.** It reads "not measured" until the follow-ups module ships, rather than showing a misleading zero.
+- **Lateness** is only measured where real connection data exists, and a failed internet connection is listed separately — never as a no-show.
+- **Months run on UTC calendar bounds.** Each frozen report stores the exact window it used.

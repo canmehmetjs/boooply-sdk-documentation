@@ -31,7 +31,6 @@ Create an AI interview, human interview, or team meeting.
 | `availableSlots` | `Array<{ start, end }>` | No | Time slots to offer the candidate for `CANDIDATE_PICKS` mode (ISO 8601, max 50) |
 | `questions` | `string[]` | No | Custom interview questions |
 | `aiGenerate` | `boolean` | No | Auto-generate questions with AI |
-| `evaluationFocus` | `string` | No | `knowledge` \| `balanced` \| `communication` \| `problem_solving` \| `culture` |
 | `sendCandidateFeedback` | `boolean` | No | Send AI-generated feedback email to candidate after evaluation |
 | `agenda` | `string[]` | No | Agenda items (team meetings only) |
 | `transcriptionEnabled` | `boolean` | No | Enable recording & post-meeting transcript for team meetings (default: `false`) |
@@ -54,7 +53,6 @@ const interview = await client.interviews.create({
   workSetup: 'REMOTE',
   employmentType: 'FULL_TIME',
   durationMinutes: 25,
-  evaluationFocus: 'knowledge',
   sendCandidateFeedback: true,
   aiGenerate: true,
   externalJobId: 'job_abc123',
@@ -139,7 +137,7 @@ const candidateJoinUrl = `${meeting.url}?token=${candidate.joinToken}`;
 
 ## `interviews.getAvailability(params)`
 
-Fetch available time slots from a team member's Google Calendar connected in Boooply. Use this instead of building your own calendar integration.
+Fetch available time slots from a team member's calendar (Google Calendar or Outlook) connected in Boooply. Use this instead of building your own calendar integration.
 
 ```javascript
 const { calendarConnected, slots } = await client.interviews.getAvailability({
@@ -172,13 +170,13 @@ if (calendarConnected && slots.length > 0) {
 | `durationMinutes` | `number` | No | Slot duration in minutes (default: 30) |
 | `days` | `number` | No | Days ahead to look (default: 14, max: 30) |
 
-> If `calendarConnected` is `false`, the user hasn't connected Google Calendar in Boooply. You can either ask them to connect it, or provide `availableSlots` from your own calendar integration.
+> If `calendarConnected` is `false`, the user hasn't connected a calendar (Google Calendar or Outlook) in Boooply. You can either ask them to connect it, or provide `availableSlots` from your own calendar integration.
 
 ---
 
 ## `interviews.getBusyBlocks(params)`
 
-Fetch raw busy time blocks from a team member's Google Calendar. Use this when you want to compute availability with your own logic.
+Fetch raw busy time blocks from a team member's calendar (Google Calendar or Outlook). Use this when you want to compute availability with your own logic.
 
 ```javascript
 const { calendarConnected, busyBlocks, timezone } = await client.interviews.getBusyBlocks({
@@ -356,9 +354,12 @@ Get the video recording for a completed interview.
 const { recording } = await client.interviews.getRecording('Boooply-AI-1234567890');
 
 if (recording) {
-  console.log(recording.videoUrl);    // pre-signed S3 URL (7 days)
-  console.log(recording.videoApiUrl); // stable URL (always works)
-  console.log(recording.duration);    // seconds
-  console.log(recording.format);      // 'mp4'
+  console.log(recording.videoUrl);         // pre-signed S3 URL (7 days); null while archived
+  console.log(recording.videoApiUrl);      // stable URL (always works)
+  console.log(recording.duration);         // seconds
+  console.log(recording.format);           // 'mp4'
+  console.log(recording.recordingStorage); // { status: 'HOT' | 'ARCHIVED' | ..., restoreExpiresAt }
 }
 ```
+
+> Organizations can archive old recording media to cold storage. While `recordingStorage.status` is not `HOT` or `RESTORED`, `videoUrl` is `null`; it comes back after a restore.

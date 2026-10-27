@@ -1,0 +1,94 @@
+# Slack
+
+Ask Boooply about your own talent pool without leaving Slack.
+
+Mention the bot in any channel with a plain sentence and it searches the people
+your team has already added to Boooply, then replies with who matches and links
+to their profiles.
+
+```
+@boooply find me backend engineers with Kubernetes, 5+ years, London
+```
+
+It answers with the people it found, each with an **Open in Boooply** button.
+
+## What it searches
+
+Only your own talent pool: candidates your workspace has already uploaded,
+including their CVs, interviews and evaluations. It does not source strangers,
+it does not scrape LinkedIn, and it cannot see anything outside your Boooply
+account.
+
+## Connecting it
+
+1. Sign in to Boooply as an **owner or admin**
+2. Go to **Settings → Integrations → Slack → Connect**
+3. Approve the app in Slack
+4. In Slack, invite the bot to a channel: `/invite @boooply`
+
+Only owners and admins can connect or disconnect. Everyone else sees the
+connection status without the buttons.
+
+Your plan must include AI search. On a plan without it, the bot connects but
+answers with an upgrade note instead of results.
+
+## Who sees what
+
+**Answers respect your Boooply permissions.** The bot works out who you are
+from your Slack email, then answers as you:
+
+| Your role | What the bot returns |
+| --- | --- |
+| Owner / Admin | The whole talent pool |
+| Recruiter | Your assigned positions, or everything if you have no assignments |
+| Hiring manager | Only your assigned positions |
+| Interviewer | Same rule as recruiter, with fewer tools |
+| No matching Boooply account | Nothing, just a note asking an admin to invite you |
+
+That last row is deliberate. The bot never answers as a shared service account,
+because that would let someone read candidates in Slack that they cannot see in
+the app.
+
+Two people asking in the same Slack thread get separate conversations, so one
+person's results are never visible in another person's follow-up questions.
+
+## What it will not do
+
+Boooply in Slack is **read only**. It cannot create candidates, schedule
+interviews, move anyone through a pipeline or message people.
+
+Replies carry names, current roles, match scores and links. **Email addresses,
+phone numbers and CV text are stripped before anything is posted**, so the
+detail stays inside Boooply behind your normal access controls.
+
+## Usage
+
+Each question uses one AI message from your workspace's daily allowance, the
+same pool the in-app assistant uses. Every reply shows what is left, for
+example *"142 of 150 AI messages left today."*
+
+## Data and privacy
+
+Connecting Slack means candidate **names and current roles** are sent to Slack
+for the replies you ask for. Slack is a US company, so this is an international
+transfer. It applies only to workspaces that connect the integration; if you
+never connect it, nothing about your candidates reaches Slack.
+
+See [Privacy](https://boooply.com/privacy) for the full processor list.
+
+## Troubleshooting
+
+**Nothing happens when I mention it.**
+The bot only sees channels it has been invited to. Run `/invite @boooply`.
+
+**"I could not find a Boooply account for your email."**
+Your Slack email has to match a member of the Boooply workspace that connected
+Slack. Ask an owner or admin to invite that email address.
+
+**I get an upgrade message instead of results.**
+The workspace is on a plan without AI search. The integration connects on any
+plan so you can see what it does; the answers need an upgrade.
+
+**The answer arrived as a direct message.**
+Fallback behaviour. If the bot cannot post in the channel, it sends the answer
+to you directly rather than losing it.
