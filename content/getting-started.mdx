@@ -62,7 +62,8 @@ After the interview completes, retrieve the evaluation. The analysis job runs as
 const result = await client.interviews.getEvaluation(meeting.meetingCode);
 
 if (result.evaluation) {
-  console.log('Score:', result.evaluation.overallScore);          // 0-100
+  console.log('Score:', result.evaluation.overallDisplay);         // 1-5, what people see
+  console.log('Sortable:', result.evaluation.overallScore);        // normalized 0-100
   console.log('Recommendation:', result.evaluation.recommendation); // PASS | FAIL | REVIEW
   console.log('Communication:', result.evaluation.communication);
   console.log('Technical:', result.evaluation.technical);

@@ -26,7 +26,7 @@ const alice = meeting.participants.find(p => p.role === 'HOST');
 const aliceJoinUrl = `${meeting.url}?token=${alice.joinToken}`;
 ```
 
-> **Dashboard UX:** When creating team meetings from the Boooply dashboard (rather than the API), you get a search-based team-member picker with a "make host" toggle and a separate form for external participants. The SDK accepts the same flat `participants` array regardless of how the meeting was created.
+> **Dashboard UX:** In the Boooply dashboard you create team meetings from the **Meetings** page (see below). You can search your team, add guests by email, paste many emails at once, or pick a saved group. The SDK accepts the same flat `participants` array regardless of how the meeting was created.
 
 ### Parameters
 
@@ -106,3 +106,60 @@ The meeting detail page shows:
 - **Polls** tab — poll questions, options, and vote results
 - **Notes** tab — private notes taken by participants
 - **Video player** — recording with speaker timeline and talk time stats
+
+## The Meetings Page
+
+Team meetings have their own page in the dashboard: **Meetings** in the sidebar. The Interviews page shows interviews only.
+
+- **Upcoming**, **Past** and **Series** tabs.
+- **New meeting** opens the meeting form. You can also start one from the **Calendar** ("New meeting") or from a team chat channel.
+- Meetings booked through your booking page show here too, with a **Booked** badge and their own filter. They show for their host and for owners and admins.
+- Every role can create team meetings. Owners and admins see all team meetings in the workspace. Everyone else sees the meetings they organize or are invited to.
+
+Old links to a team meeting under `/interviews/...` still work. They open the meeting on the Meetings page.
+
+### From team chat
+
+In a channel, use **Meet now** to start a meeting right away with everyone in the channel. The link is posted in the channel, and your own room opens in a new tab. Meet now meetings have no transcript, so they are free. Use **Schedule** to plan a meeting with the channel's people filled in. A meeting can have up to 20 people, so a bigger channel uses Schedule to pick who joins.
+
+## Groups
+
+A group is a saved list of people, like Engineering or Leadership. Pick a group in the meeting form to invite everyone at once.
+
+- Owners and admins manage groups in **Settings > Team > Groups**. Everyone can use them.
+- A group can have up to **20 people** (the same limit as a meeting). Add team members by search, or guests by email.
+- Group names are unique in a workspace.
+- Deleting a group does not change meetings that already exist. Repeating meetings that follow it keep their current people.
+
+## Repeating Meetings
+
+Set a meeting to repeat in the meeting form: every weekday, weekly on the days you pick, every 2 weeks, or monthly (same weekday, like "2nd Tuesday", or same date). It can end on a date, after a number of meetings, or never.
+
+- **One invite.** Each person gets one calendar invite for the whole series (Google, Outlook, or an .ics file).
+- **One link.** Each person has one personal link that always opens the right meeting, the next one or the one that is live now.
+- **Edit.** Change **only this meeting** or **this and following** meetings. Cancel one meeting or the whole series.
+- **Follows its group.** A series made from a group invites the group's current people. Someone removed from the group is not invited to future meetings.
+- Each date is a real meeting with its own recording, transcript and recap. The series page shows them all on one timeline.
+
+You can also ask the AI assistant, for example: "Every Tuesday at 10 with Engineering". It shows the repeat rule and the group before it creates anything.
+
+Repeating meetings and groups are dashboard features for now. Single team meetings work through the API as before.
+
+## Weekly Recaps and Action Items
+
+When transcription is on, every team meeting gets an AI recap with action items. Action items are saved, so the team can follow them up.
+
+- On a repeating meeting, open action items **carry forward** to the next meeting.
+- The next recap starts with **Since last time**: what was done, what is still open, and the last decisions.
+- The AI only **suggests** that an item looks done. The owner of the item or the organizer confirms it, or keeps it open.
+- If nobody joins a meeting, nothing is charged, no recap is made, and open items stay open for the next one.
+- On a series you can choose who gets the recap email: **everyone invited** (default), **only the organizer**, or **off**.
+
+## Credits
+
+Team meetings are free without transcription. With transcript and AI recap they use 1 credit when the meeting starts, and 2 credits if 11 or more people join.
+
+- Nothing is charged when you create or schedule a team meeting. The credit is taken when the first person joins.
+- If your workspace has no credits left, the call still works, but it is not recorded or transcribed. The host sees a note in the call.
+
+See [Plans & Billing](/guides/billing-and-credits) for how credits work for interviews.

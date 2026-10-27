@@ -1,5 +1,229 @@
 # Changelog
 
+## October 2026 — `speakingTimes` counts each person's talk once, transcript times match the video
+
+**Two value changes, two new fields.** No SDK changes, no MCP changes.
+
+### Changed
+- `interview.evaluation` → `speakingTimes` is now measured from cleaned speech
+  segments. Before, overlapping pieces of the same person's speech were added
+  up twice, so the candidate's share and seconds could come out too high (in
+  one AI interview, 1316 candidate seconds in a 14-minute call). The fields
+  and their meaning (share of speech, not of the call) are unchanged; the
+  numbers are now correct. The field is documented in
+  [Webhooks](/webhooks#interviewevaluation).
+- `GET /api/integration/interviews/:meetingCode/transcript` (and MCP
+  `get_transcript`): `videoTimeMs` now counts from the moment the recording
+  starts, and for AI interviews it is where the line starts being spoken,
+  not when it was finished. Values move by a few seconds.
+
+### Added
+- Transcript lines carry `videoEndMs`, where the line ends in the recording.
+- The transcript response and `GET /api/integration/interviews/:meetingCode`
+  carry `videoOffsetMs`: add it to an evaluation `timestamp` / `tsLabel`
+  (`"02:15"`, counted from the first transcript line) to get the moment in
+  the recording.
+
+## October 2026 — `interview.booked` no longer sends your API key
+
+**One webhook behaviour change.** No SDK changes, no MCP changes.
+
+### Changed
+- The `interview.booked` webhook no longer sends your workspace API key as
+  `Authorization: Bearer`. Anyone who could read requests to that URL could
+  have used the key. The request is now signed in `X-Boooply-Signature` with
+  your webhook secret, like every other event. See
+  [Webhooks](/webhooks#interviewbooked).
+- If your receiver checked the `Authorization` header on this event, switch
+  to verifying `X-Boooply-Signature`. The body is unchanged.
+
+## October 2026 — Outlook calendar
+
+Team members can now connect a **Microsoft 365 or Outlook.com calendar** next
+to (or instead of) Google Calendar. No breaking changes, no new SDK methods,
+no new MCP tools.
+
+### Changed
+- `interviews.getAvailability()` / `GET /api/integration/availability` and
+  `interviews.getBusyBlocks()` / `GET /api/integration/busy-blocks` read the
+  member's Outlook calendar too. When both calendars are connected, busy in
+  either one counts as busy. A member with only Outlook now returns
+  `calendarConnected: true`.
+- The "not connected" `message` now says "a Google or Microsoft calendar".
+
+### Added
+- Optional `providers` array on both responses: the calendars used
+  (`GOOGLE`, `MICROSOFT`).
+
+## October 2026 — The AI no longer suggests hire or no-hire
+
+**One API behaviour change** (below). No new fields, no SDK type changes, no
+new MCP tools.
+
+The AI scores each interview and gives a fit verdict against the role
+(`Strong Fit` to `Poor Fit`) with the evidence behind it. Whether to hire is
+the recruiter's decision alone, so the AI no longer suggests one.
+
+### Changed
+- `aiRecommendation` and `aiRecommendationRationale` in
+  `interviews.getEvaluation()` / MCP `get_evaluation` are **always `null`**,
+  including for interviews analysed earlier. The fields stay, so existing
+  integrations keep their shape.
+- `finalizedRecommendation` now appears **only once a recruiter has decided**
+  (together with `finalizedAt`). Before, it could hold the AI's own suggestion
+  with `finalizedAt: null`.
+- Being more senior than the role no longer lowers a candidate's fit verdict.
+  Only a candidate below the role's level is lowered.
+
+## September 2026 — Testimonials and the event role matcher
+
+Portal features plus public pages. **One API behaviour change** (below); no new
+SDK types and no new MCP tools.
+
+### Added
+- **Testimonials.** Collect short, recorded video testimonials with an AI host.
+  Create a page with your questions, share its link or QR code, and people
+  verify their email, give consent item by item, and book a time. Nothing is
+  scored. Owners and admins see each video, transcript and consent record, and
+  can download the video. Starter plan and above.
+- **Role matcher on event pages.** Candidates upload a CV on a public event
+  page and see which of that event's roles fit them best, then apply as usual.
+  Switched on per event. Replaces the organisation-wide `/m/{slug}` page.
+- **QR code for every event**, as PNG or SVG.
+
+### Changed
+- `GET /interviews` (API key) and the MCP `list_interviews` tool **no longer
+  return testimonial sessions**. They were never interviews; the response shape
+  is unchanged.
+
+### Removed
+- The organisation-wide role matcher page (`/m/{slug}`) and its settings page.
+
+## August 2026 — Slack
+
+Portal-internal plus a new inbound webhook. **No SDK / public API change**: the
+new routes are under `/api/portal/integrations/slack` and
+`/api/webhooks/slack`, and MCP tools expose nothing new.
+
+Ask Boooply about your own talent pool from Slack. Mention the bot with a plain
+sentence and it replies with the people who match, each with a button into their
+profile. See the [Slack guide](/guides/slack).
+
+### Added
+- **@boooply in Slack.** Searches the candidates your workspace already
+  uploaded. No sourcing, no scraping: it only ever looks at your own pool.
+- **Answers follow your permissions.** The bot identifies you by your Slack
+  email and answers as you, so a hiring manager assigned to two roles gets
+  results from those two roles. Anyone with no matching Boooply account gets no
+  results at all. There is no shared service account.
+- **Candidate cards** with an **Open in Boooply** button, built from the search
+  results themselves rather than from the AI's wording.
+- **Usage is visible.** Every reply shows how many AI messages the workspace has
+  left today, drawn from the same daily allowance as the in-app assistant.
+- **Connect and disconnect** in **Settings → Integrations**, owners and admins
+  only.
+
+### Notes
+- **Read only.** Slack cannot create candidates, schedule interviews or move
+  anyone through a pipeline.
+- **Contact details never leave.** Emails, phone numbers and CV text are
+  stripped before a reply is posted. Replies carry names, roles, match scores
+  and links.
+- Requires a plan that includes AI search. The integration connects on any plan;
+  the answers need the entitlement.
+- Connecting Slack sends candidate names and roles to Slack (US). It applies
+  only to workspaces that connect it.
+
+## August 2026 — Team performance
+
+Portal-internal. **No SDK / public API change**: every endpoint is under `/api/portal`, and MCP tools expose nothing new.
+
+A monthly, receipt-backed view of how each member works: how fast they decide, how much they do, how well they evaluate people, and how their interviews feel from the candidate's side. **Off by default** — nothing is measured about anyone until an owner turns it on in **Settings → Team performance**.
+
+### Added
+- **Monthly frozen reports.** On the 1st, last month is computed once and locked. A frozen month can never change, so a number used in a conversation months later is the same number that was there on the day. The one exception is stated on the report itself: "downstream survival" keeps collecting outcomes for 60 days, is labelled *provisional* until then, and finalizes once.
+- **Receipts behind every number.** Each metric opens the exact interviews, decisions and stage moves it came from — nothing is AI-summarized, and the underlying records are one click away.
+- **Your own page.** Every member can open **My performance** from the profile menu and read their own numbers, with a "What to work on" section built from recurring suggestions in the AI's reviews of their interviews. Owners can turn self-view off for the workspace.
+- **Team Performance PDF.** Generated automatically when a month freezes (owners and admins are notified) and available on demand from the Reports page. It prints the cover, the org summary with the fairness guards spelled out, one section per member, and the full methodology as an appendix.
+- **Candidate ownership.** Candidates can have an owner, set from the pipeline board, list, table, or in bulk. Scheduling a 1-to-1 interview makes the scheduler the owner if nobody owns the candidate yet. Ownership is accountability metadata — it does not change who can see what.
+
+### Fairness rules, on purpose
+- **Nothing is shown below 5 data points.** A thin metric reads "Not enough data (n = 3 of 5)" — never a number, never zero.
+- **AI ratings are never the headline.** Every AI-derived figure is labelled a coaching signal, and the report says in plain words that it is decision support, not an automated decision system.
+- **No backfill, ever.** Only whole months after the feature was switched on are computed. The system never guesses at history it did not measure.
+- **The rules are readable by the people being measured** — the same methodology text appears in the app, in every member's own page, and in the PDF appendix.
+
+### Fixed
+- **Four report types that never generated.** `rejected_per_stage`, `offer_pipeline`, `filled_roles` and `recruiter_activity` had no templates, so generation failed after PENDING. All four now render.
+- **Recruiter Activity's "interviews hosted"** now counts interviews the same way Team Performance does, so the two surfaces cannot disagree.
+
+### Notes
+- **Follow-up discipline is not measured yet** and honestly says so on the page. It becomes a real number when the follow-ups module ships.
+- External interviewers (people without a Boooply account) appear in their own section and are never ranked alongside staff.
+
+
+## August 2026 — Recording cold storage
+
+Organizations can now move old interview recording **media** (video and audio files) to low-cost cold storage, restore it on demand, and optionally delete archived media after a retention period. Transcripts and evaluations are never archived — they always stay available.
+
+### Added
+- **Archive and restore.** Owners and admins archive per recording or in bulk from **Settings → Data retention**; a restore takes a few hours and everyone tied to the interview gets an in-app notification when the recording is watchable again. Restored copies stay available for 7 days, then return to the archive.
+- **Org retention policy.** Two knobs: when to *suggest* archiving (default 12 months, also the bulk-archive threshold) and an **opt-in** "delete archived media after X years" (default off). Deletion warns owners and admins 14 days ahead and keeps the interview row, transcript, and evaluation.
+- **`recordingStorage` on external payloads** (additive). The integration recording endpoint and the `interview.recording` webhook now include `recordingStorage: { status, restoreExpiresAt }`.
+
+### Changed
+- **`videoUrl` can be `null` while a recording is archived** — on the integration endpoint and the recording webhook. A pre-signed URL issued before archiving stops working even inside its 7-day window. Store `videoApiUrl` (unchanged, stable) and re-fetch after a restore.
+- Public share pages keep working while a recording is archived: transcript and evaluation stay, and the video column says "This recording has been archived by the organization". Share viewers can never trigger a restore; the video returns automatically once someone restores it in the portal.
+
+### Notes
+- The whole feature ships **dark**: it activates only when the `RECORDING_ARCHIVE_MODE` deployment flag is switched on, so existing behavior is unchanged until then.
+- Not the same thing as archiving an interview from the interviews list — that hides the interview; this moves recording media between storage tiers.
+- MCP `get_interview` passes the new fields through unchanged. SDK types are additive; no breaking change.
+
+
+## August 2026 — Dashboard analytics + four new reports
+
+Portal-internal. **No SDK / public API change**: `/api/portal/dashboard/*` are portal endpoints and are not part of the integration API. MCP is unaffected — reports are still generated through the existing report queue.
+
+### Added
+- **Four new report types.** `rejected_per_stage` (where candidates drop out, rejection rate, worst-affected roles), `offer_pipeline` (every open offer aged into under-7 / 7-14 / 14-30 / over-30 day buckets, plus acceptance rate), `filled_roles` (seats filled per role with average time to fill), and `recruiter_activity` (candidates added, screened, and interviews hosted per person). They appear in the Reports dialog automatically. Free plan still gets Organization Overview only; every paid plan gets all reports.
+- **`GET /api/portal/dashboard/analytics?days=N`.** Chart series for the dashboard: daily interview volume (scheduled against completed, zero-filled so gaps are real gaps), score distribution across 1-5, weekly average-score trend, interview-type split, pipeline funnel, and the preceding period for deltas. `days` is clamped server-side to 7-180.
+- **`GET /api/portal/dashboard/story`.** The decision-oriented payload: evaluations waiting on your sign-off *by name and score*, today's schedule, and what changed since you last opened the dashboard. Each pending decision carries one supporting transcript quote pulled from the stored analysis.
+
+### Notes
+- **Recruiter Activity is deliberately partial.** Candidates carry no recruiter field, so attribution is proxied through who created the candidate record; the report says so in its own note. Submit-to-client counts are **absent from the payload**, not zero, until that feature ships.
+- All three endpoints apply the same two scopes as the rest of the portal: assigned positions, and — for anyone who is not an owner or admin — only interviews they took part in. A scoped recruiter cannot widen their view by changing a parameter, because there is no parameter to change.
+- Interview volume is now computed server-side. It previously came from the most recent 50 interviews in the browser, which silently under-reported once an organization passed 50.
+
+
+## July 2026 — Dashboard metrics
+
+Portal-internal. **No SDK / public API / MCP change**: `GET /api/portal/dashboard/metrics` is a portal endpoint and is not part of the integration API.
+
+### Added
+- **Recruitment metrics on the dashboard.** Open roles, roles with no candidates yet, candidate totals, offers out, evaluations awaiting sign-off, an active-stage funnel, and client-submission state (sent / awaiting feedback / answered this month).
+- **Role-aware by default.** What you see is decided from your own membership, not from anything the page asks for. Owners and admins see the whole organization; a recruiter assigned to specific roles sees only those; hiring managers and interviewers keep the interview view with no operations metrics.
+
+### Notes
+- **A section you do not see is a section that was never measured**, not a zero. Client-submission metrics are absent entirely for an organization that has never submitted a shortlist, rather than showing three zeros.
+- A recruiter with **no** role assignments is unscoped by design and sees the whole organization. Assign positions to a member to narrow their view.
+
+
+## June 2026 — Reusable client teams
+
+Backend + product behavior only. **No SDK / public API / MCP change**: client teams and project hiring contacts are portal-internal and are not exposed via the integration API, SDK, or MCP tools.
+
+### Added
+- **Reusable teams per client.** A Client can now own named **Teams** of external (client-side) people — `{ name, email, role?, primary }` — defined once and attached to any of the client's Projects. The `primary` member is the team lead = the hiring manager = the default recipient when you submit a candidate shortlist to that client. Manage teams on the client detail page (create / edit members / delete); attach one team per project via the project's Team picker.
+- **Project → team attach.** Each Project now carries an optional `teamId`. Attaching a team mirrors its primary onto the project's hiring-manager fields, so the position view and the submit-to-client recipient stay correct; editing a team's members re-syncs every project it's attached to.
+
+### Notes
+- **No breaking changes.** The legacy per-project `hmName` / `hmEmail` / `contacts` fields are kept and still drive submit-to-client for any project that has **no** team attached (back-compat fallback). Deleting a team simply unattaches it from its projects (`SET NULL`) — projects render "No team", nothing breaks.
+- Exactly one `primary` per team is enforced server-side (first flagged wins; the first member is promoted when none is flagged). Members are capped at 10 per team and deduped by email.
+- Internal feature. Public REST endpoints, MCP tools, and the SDK are not affected.
+
+---
+
 ## May 2026 — Per-Position evaluation rubrics
 
 SDK package remains at `v2.4.0`. Backend + product behavior change; **no SDK code change required** — the new fields ride through the existing `getEvaluation()` response shape. MCP `get_evaluation` is unchanged code-wise and surfaces the new fields automatically.
@@ -57,6 +281,8 @@ SDK package remains at `v2.4.0`. Backend + product behavior change; no SDK code 
 
 ### Webhooks
 - A resumable close or a **no-show does not fire** `interview.evaluation` / `interview.scores` / `interview.transcript` / `interview.recording` — a no-show is not a completed interview and is not analyzed. These fire only on a genuine completion (host-complete or a substantive auto-complete), as before. (Billing is unchanged: usage is counted when an interview is *created*, not on completion — a no-show neither charges nor refunds.)
+
+> **Update, October 2026:** the billing note above is out of date. Since the no-show refund change, an interview the candidate never joins gets its credit back automatically. Since October 2026, team meetings are no longer charged at creation: they use a credit when they start, and only with transcription on. See [Plans & Billing](/guides/billing-and-credits).
 
 ---
 

@@ -15,12 +15,20 @@ Returns AI-generated evaluation scores and analysis for a completed interview.
   "success": true,
   "evaluation": {
     "recommendation": "PASS",
+    "scoreScale": "1-5",
+    "isLegacyScale": false,
     "overallScore": 82,
+    "overallDisplay": 4.1,
     "communication": 85,
+    "communicationDisplay": 4.3,
     "technical": 78,
+    "technicalDisplay": 3.9,
     "cultureFit": 90,
+    "cultureFitDisplay": 4.5,
     "problemSolving": 80,
+    "problemSolvingDisplay": 4,
     "experienceMatch": 85,
+    "experienceMatchDisplay": 4.3,
     "questionEvaluations": [
       {
         "question": "Tell me about your React experience",
@@ -60,15 +68,123 @@ Returns AI-generated evaluation scores and analysis for a completed interview.
 | Field | Type | Description |
 |-------|------|-------------|
 | `recommendation` | `string` | `PASS` \| `FAIL` \| `REVIEW` — derived from `rawAnalysis.recruiterSummary.quickDecision` |
-| `overallScore` | `number` | 0-100 overall score |
+| `scoreScale` | `string \| null` | `"1-5"` when the analyzer genuinely scored this interview 1-5. `null` for interviews analyzed before the switch, which are 0-100 and are never backfilled |
+| `isLegacyScale` | `boolean` | The same fact as a boolean: `true` means a pre-switch 0-100 interview |
+| `overallScore` | `number` | Overall score, NORMALIZED 0-100. Stable across both eras, so this is what to sort, average and filter on |
+| `overallDisplay` | `number \| null` | The same score as the 1-5 number people see in Boooply. Show this one to users |
 | `communication` | `number` | 0-100 communication score |
 | `technical` | `number` | 0-100 technical skills score (mapped from `rawAnalysis.scores.technicalSkills`) |
 | `cultureFit` | `number` | 0-100 culture fit score |
 | `problemSolving` | `number` | 0-100 problem-solving score |
 | `experienceMatch` | `number` | 0-100 experience-level match score |
+| `*Display` | `number \| null` | Every category above has a matching `…Display` field carrying its 1-5 value (`communicationDisplay`, `technicalDisplay`, `cultureFitDisplay`, `problemSolvingDisplay`, `experienceMatchDisplay`) |
 | `questionEvaluations` | `array` | Per-custom-question results: `{ question, score (0-100), notes }` |
+| `rubricSnapshot` | `object` | The frozen rubric this interview was scored against. Only present in rubric mode, see below |
+| `byCriterion` | `object` | Per-criterion scores keyed by criterion id. Only present in rubric mode, see below |
+| `mustHavesMet` | `boolean` | Whether every criterion marked `mustHave` was met. Rubric mode only |
+| `overallConfidence` | `string` | `low` \| `medium` \| `high`, rolled up from how much evidence each criterion had. Rubric mode only |
+| `overallAssessmentState` | `string` | `not_assessed` \| `gap_shown` \| `demonstrated`, rolled up from the per-criterion states. Rubric mode only |
+| `aiRecommendation` | `null` | **Always `null` since October 2026.** The AI no longer suggests hire or no-hire; the field stays so existing integrations keep their shape. Rubric mode only |
+| `aiRecommendationRationale` | `null` | Always `null` since October 2026, like `aiRecommendation`. Rubric mode only |
+| `finalizedRecommendation` | `string \| null` | The recruiter's hire decision: `STRONG_HIRE` \| `HIRE` \| `NO_HIRE` \| `STRONG_NO_HIRE`, or absent until a recruiter decides. See Finalization below |
+| `finalizedAt` | `string \| null` | ISO timestamp of the recruiter's decision, or `null` when nobody has decided yet |
+| `finalizedBy` | `string \| null` | User id of the recruiter who decided. No display name is resolved here |
+| `finalizedRationale` | `string \| null` | What the recruiter wrote when deciding |
 
-> **Scales:** `evaluation.*` scores are all 0-100. `rawAnalysis.overallRating` is a 1-5 rating (5-star scale). Webhook payloads include both scales — see [Webhooks](/webhooks).
+> **Scales — read this before rendering a score.** Boooply shows scores to
+> people as **1-5** with one decimal. Interviews analyzed before that switch keep
+> their original 0-100 data and are never converted in place.
+>
+> Every numeric `evaluation.*` field stays on the **normalized 0-100** scale so
+> that sorting, averaging and range filters keep working across both eras, and
+> each one has a matching `…Display` field holding the 1-5 value. Use the 0-100
+> number for maths, show the `…Display` number to people.
+>
+> `scoreScale` tells you which era an interview belongs to: `"1-5"` means the
+> analyzer genuinely scored it 1-5, `null` means it predates the switch.
+> Converting is just `display = normalized / 20`.
+>
+> A `null` score means the topic was **never assessed**, which is not the same
+> as a zero. Never render it as a low score.
+>
+> `rawAnalysis.overallRating` is a separate legacy 1-5 rating. Webhook payloads
+> include both scales — see [Webhooks](/webhooks).
+
+### Per-criterion scoring (rubric mode)
+
+When the position had an evaluation rubric at the time the interview was
+created, the analyzer scores every criterion separately and `evaluation` carries
+an extra block. Positions without a rubric never include these fields, so check
+for `byCriterion` before reading any of them.
+
+```json
+{
+  "byCriterion": {
+    "90a1fc86-65fc-4caa-b761-6ef7da8ac050": {
+      "criterionId": "90a1fc86-65fc-4caa-b761-6ef7da8ac050",
+      "name": "Vue.js Expertise",
+      "mustHave": true,
+      "score": 4.3,
+      "evidenceCount": 7,
+      "evidenceQuotes": ["In Vue 3 the whole thing was rewritten on top of ES6 Proxy..."],
+      "confidence": "high",
+      "assessmentState": "demonstrated",
+      "ratingLabel": "Exceeds expectations",
+      "rationale": "Candidate demonstrated expert-level understanding of reactivity."
+    }
+  },
+  "mustHavesMet": true,
+  "overallConfidence": "medium",
+  "overallAssessmentState": "demonstrated",
+  "aiRecommendation": null,
+  "aiRecommendationRationale": null
+}
+```
+
+Each entry in `byCriterion` carries:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `criterionId` | `string` | Stable id, the same key the entry is stored under. Survives a criterion rename |
+| `name` | `string` | Criterion name as it read in the rubric when the interview was created |
+| `mustHave` | `boolean` | Whether this criterion is a deal-breaker |
+| `score` | `number \| null` | **1-5, not 0-100.** Per-criterion scores are native. `null` means never assessed |
+| `evidenceCount` | `number` | How many pieces of evidence the analyzer found for this criterion |
+| `evidenceQuotes` | `string[]` | Verbatim quotes from the transcript backing the score |
+| `confidence` | `string` | `low` \| `medium` \| `high`, derived from `evidenceCount` alone |
+| `assessmentState` | `string` | `not_assessed` \| `gap_shown` \| `demonstrated` |
+| `ratingLabel` | `string \| null` | The rubric's own wording for that score level |
+| `rationale` | `string \| null` | Why the analyzer landed on that score |
+
+Both derived labels are mechanical, with no extra model call:
+
+- **`confidence`** is 0 or 1 pieces of evidence for `low`, 2 to 4 for `medium`,
+  5 or more for `high`.
+- **`assessmentState`** is `not_assessed` when the score is `null` or the
+  criterion has fewer than 2 pieces of evidence. Otherwise a score of 3 or above
+  is `demonstrated` and anything below is `gap_shown`.
+- **`overallConfidence`** is `low` when half or more of the criteria are
+  unassessed, `medium` when any single one is, `high` when none are.
+- **`overallAssessmentState`** is `not_assessed` when half or more are
+  unassessed, `gap_shown` when any criterion shows a gap, `demonstrated`
+  otherwise.
+
+A criterion with `assessmentState: "not_assessed"` was never probed in the
+interview. That is not a low score and must not be reported as one.
+
+### Finalization
+
+The AI scores the interview and gives a fit verdict
+(`rawAnalysis.recruiterSummary.quickDecision`: `STRONG_FIT` to `POOR_FIT`).
+It never decides, or suggests, whether to hire. Only a recruiter does, when
+they finalize the interview in Boooply.
+
+`finalizedRecommendation`, `finalizedAt`, `finalizedBy` and
+`finalizedRationale` appear together, and only once a recruiter has decided.
+Before that they are absent. Since October 2026 an unreviewed AI opinion never
+appears in `finalizedRecommendation`.
+
+`finalizedBy` is a user id. No display name is resolved on this endpoint.
 
 > **Category parity:** If the analyzer didn't output a specific category score, that field falls back to `overallScore` rather than being `null`. You can tell a fallback happened by checking against `rawAnalysis.scores` directly.
 
